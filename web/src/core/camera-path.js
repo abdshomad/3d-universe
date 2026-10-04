@@ -24,10 +24,12 @@ export class CameraPath {
       throw new RangeError('a path needs at least two waypoints');
     }
     this.waypoints = waypoints.map((waypoint, index) => normalise(waypoint, index));
+    // Radii may go up or down: a search flight can approach a nearby star from
+    // far away. Only a repeated radius is impossible to interpolate.
     for (let i = 1; i < this.waypoints.length; i += 1) {
-      if (!(this.waypoints[i].radiusPc > this.waypoints[i - 1].radiusPc)) {
+      if (this.waypoints[i].radiusPc === this.waypoints[i - 1].radiusPc) {
         throw new RangeError(
-          `waypoint ${this.waypoints[i].name} must be further out than ${this.waypoints[i - 1].name}`,
+          `waypoint ${this.waypoints[i].name} repeats the radius of ${this.waypoints[i - 1].name}`,
         );
       }
     }

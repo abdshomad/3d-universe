@@ -21,11 +21,12 @@ import { createStarDust } from './render/star-dust.js';
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
 import { createSparkLayers } from './render/sparks.js';
-import { METRES_PER_PC } from './core/units.js';
+import { METRES_PER_PC, metresToPc } from './core/units.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
 import { FlightController, inputFromKeys } from './core/flight-controls.js';
 import { journeyFromLandmarks } from './core/journey.js';
+import { SearchIndex, flightPathTo } from './core/search.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
@@ -44,6 +45,7 @@ let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
+const SEARCH_DIR = '../assets/search/nearby.json';
 let eventPayload = null;
 let sparkLayers = [];
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
@@ -61,6 +63,28 @@ window.__atlas = atlas;
 atlas.budget = budget;
 atlas.flight = flight;
 atlas.route = route;
+let searchIndex = null;
+
+/** Type a name or a HIP number, get a flight path. */
+function attachSearchBox() {
+  const box = document.getElementById('search');
+  const result = document.getElementById('search-result');
+  if (!box || !searchIndex) return;
+  box.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const match = searchIndex.best(box.value);
+    if (!match) {
+      result.textContent = `nothing found for "${box.value}"`;
+      return;
+    }
+    const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
+    const path = flightPathTo(match, { fromPc });
+    switchRoute(path, `flight to ${match.name ?? `HIP ${match.hip}`}`);
+    result.textContent = `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`;
+    atlas.stats.searchResult = match.id;
+  });
+}
+
 function switchRoute(next, name) {
   activeRoute = next;
   activeRouteName = name;
@@ -109,6 +133,12 @@ async function start() {
   if (landmarkPayload?.landmarks?.length) {
     journeyRoute = journeyFromLandmarks(landmarkPayload.landmarks);
     atlas.journey = journeyRoute;
+  }
+  const searchPayload = await loadJson(SEARCH_DIR).catch(() => null);
+  if (searchPayload?.entries?.length) {
+    searchIndex = new SearchIndex(searchPayload.entries);
+    atlas.search = searchIndex;
+    attachSearchBox();
   }
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);

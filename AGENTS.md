@@ -134,3 +134,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   than G=8, and zero in the box containing Alpha Centauri A. Tiles are statistically fine but
   unnamed stars are usually missing, so a journey built on our own tiles would fly past the
   nearest star without it. Recorded in the research doc.
+- 2026-10-04 — `n` #25 (sub-plan 04): search in the HUD. Type a name or a HIP number, get a flight
+  path; matching is deliberately narrow, because a looser matcher starts returning stars nobody asked
+  for. Verified live: 'sirius' flies to 2.6371 pc, the measured Hipparcos distance, and an unknown
+  name answers 'nothing found' instead of inventing one. Paths may now run inward as well as
+  outward, since a search can approach a nearby star from far away. 166/166 tests pass.

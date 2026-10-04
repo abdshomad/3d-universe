@@ -42,6 +42,14 @@ export function journeyFromLandmarks(landmarks, {
   const ordered = [...landmarks].sort((a, b) => a.distance_pc - b.distance_pc);
   ordered.forEach(assertPlaced);
 
+  for (let i = 1; i < ordered.length; i += 1) {
+    if (!(ordered[i].distance_pc > ordered[i - 1].distance_pc)) {
+      throw new RangeError(
+        `journey waypoints must step outward: ${ordered[i].name} is not beyond ${ordered[i - 1].name}`,
+      );
+    }
+  }
+
   const first = ordered[0];
   const waypoints = [{
     name: 'sol',

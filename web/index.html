@@ -63,6 +63,13 @@
       #badge { position: absolute; bottom: 18px; right: 16px; padding: 6px 11px;
         border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2; letter-spacing: 0.22em; }
       #hud-meta { position: absolute; top: 14px; right: 16px; color: var(--ink-dim); text-align: right; }
+      /* One field, no chrome: search has to be reachable without a tutorial. */
+      #search { position: absolute; top: 42px; right: 16px; width: 190px; padding: 5px 8px;
+        background: rgba(5, 6, 10, 0.5); border: 1px solid rgba(138, 143, 152, 0.22); color: #c6cad2;
+        font: inherit; letter-spacing: 0.14em; text-transform: uppercase; }
+      #search:focus { outline: none; border-color: rgba(138, 143, 152, 0.55); }
+      #search::placeholder { color: var(--ink-dim); }
+      #search-result { position: absolute; top: 74px; right: 16px; color: var(--ink-dim); }
     </style>
   </head>
   <body>
@@ -76,6 +83,8 @@
       </div>
       <div id="nav" data-hud="nav">ATLAS · ROUTE · TIERS · PROVENANCE</div>
       <div id="hud-meta"><span data-hud="waypoint">free flight</span></div>
+      <input id="search" type="search" placeholder="search  (name or HIP)" autocomplete="off" spellcheck="false" />
+      <div id="search-result"></div>
 
       <div id="factcard" data-hud="factcard" hidden>
         <img data-fact="image" alt="" hidden />

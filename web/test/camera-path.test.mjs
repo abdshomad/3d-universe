@@ -88,12 +88,18 @@ test('polar to cartesian puts the camera on the requested bearing', () => {
 
 test('nonsense routes are refused', () => {
   assert.throws(() => new CameraPath([]), /at least two/);
+  // Inward legs are legal — a search flight can approach a nearby star.
+  const inward = new CameraPath([
+    { name: 'far', radiusPc: 1000 },
+    { name: 'near', radiusPc: 1 },
+  ]);
+  assert.ok(inward.waypoints[1].radiusPc < inward.waypoints[0].radiusPc);
   assert.throws(
     () => new CameraPath([
       { name: 'a', radiusPc: 10 },
-      { name: 'b', radiusPc: 1 },
+      { name: 'b', radiusPc: 10 },
     ]),
-    /further out/,
+    /repeats the radius/,
   );
   assert.throws(() => new CameraPath([{ radiusPc: -1 }, { radiusPc: 2 }]), /unusable radius/);
   assert.throws(() => route().sample(-1), /negative/);
