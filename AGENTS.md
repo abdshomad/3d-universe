@@ -167,6 +167,12 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   hostile fragment is ignored, not flown to. The browser caught three wiring bugs the unit tests
   could not: the route overwrote the restored position, the link spoke degrees while the rig speaks
   radians, and the selection id was serialised as a truncated number. 205/205 tests pass.
+- 2026-10-04 — `n` #34 (sub-plan 05): the modelled tier's fact card. It leads with what the
+  tier is *not* - a survey map, no galaxy here is measured - and reaches the HUD without a
+  click, because when nothing else is selected and the tier is on screen it is what you are
+  looking at. Verified live: 49,410 cells at 200 Mpc, 6,163 at 5000 Mpc. Two plumbing bugs
+  the browser caught that the unit tests could not: the seed lives under header.dataset,
+  and cardFor passes only observerYear, so pointCount must ride on the object.
 - 2026-10-04 — `n` #33 (sub-plan 05): radial LOD and seam continuity. The level switches on the
   angular size of a cell rather than a distance, and the seam smoothsteps opacity over
   1-8 Mpc. Verified live: fine at 2 and 200 Mpc, coarse at 5000 Mpc, hidden at 0.2 Mpc.

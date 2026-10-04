@@ -45,8 +45,12 @@ tier says exactly that: it is a model of large-scale structure, not a survey map
   hands over to modelled structure with no ring and no density pop. Verified live: invisible at
   0.2 Mpc (badge `UNRESOLVED`), 5.5 % opacity at 2 Mpc, full by 20 Mpc, badge `SIMULATED`. Same
   additive language and same tonemap throughout — the fade moves opacity, never the density.
-- [ ] `[TODO]` `SIMULATED` badge and a fact card saying what the tier is and is not: a model of
-  structure, not a survey map.
+- [x] `SIMULATED` badge and fact card — the badge reads `SIMULATED` whenever the tier is on screen
+  and `UNRESOLVED` when it is not. The card leads with what the tier **is not**: *a survey map — no
+  galaxy here is measured*, with the seed, grid and cell count alongside. It reaches the card
+  without a click, because when nothing else is selected and the tier is on screen the tier *is*
+  what you are looking at. Verified live at 200 Mpc (49,410 cells) and 5000 Mpc (6,163) — the card
+  reports the level actually drawn.
 - [ ] `[TODO]` Frame-budget check: the 500 Mpc tier must not push the star zone below its budget.
 
 ## Acceptance

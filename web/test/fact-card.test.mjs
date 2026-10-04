@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   UnknownObjectKindError,
   cardFor,
+  cardForField,
   cardForEvent,
   cardForLandmark,
   cardForStar,
@@ -85,4 +86,27 @@ test('dispatch refuses a kind it has no card for', () => {
 test('an event of any kind routes to the event card', () => {
   assert.equal(cardFor({ kind: 'frb', id: 'f' }).name, 'f');
   assert.equal(cardFor({ kind: 'gravitational_wave', id: 'g' }).name, 'g');
+});
+
+test('the field card says what the tier is not', () => {
+  const field = {
+    kind: 'field',
+    radiusMpc: 500,
+    cellMpc: 10.42,
+    grid: 96,
+    seed: 20261004,
+    flag: 'SIMULATED',
+    provenance: 'generated · SIMULATED · DESI DR1 is the science reference, not the source',
+    pointCount: 49410,
+  };
+  const card = cardFor(field, { observerYear: 2026 }); // the real call shape
+  const label = (needle) => card.rows.find(([key]) => key === needle)?.[1];
+  const denial = card.rows.find(([key]) => key === 'is not');
+  assert.deepEqual(denial, ['is not', 'a survey map — no galaxy here is measured']);
+  assert.equal(label('radius'), '500 Mpc');
+  assert.equal(label('grid'), '96³');
+  assert.equal(label('cells drawn'), '49410');
+  assert.equal(label('seed'), '20261004');
+  assert.ok(card.provenance.includes('SIMULATED'));
+  assert.ok(card.provenance.includes('not the source'), 'DESI is a reference, not the pixels');
 });

@@ -609,6 +609,24 @@ function epochReadout() {
 }
 
 function hudSelection() {
+  if (cardSelection) return cardSelection;
+  // Nothing else is selected and the tier is on screen: say what it is, and
+  // more usefully what it is not. A click on a cell would need picking, which
+  // is its own task; until then this reaches the card honestly.
+  if (atlas.stats.lssVisible && lssField) {
+    const live = lssLevels.find((layer) => layer.visible);
+    return {
+      kind: 'field',
+      name: 'Large-scale structure',
+      radiusMpc: lssField.radiusMpc,
+      cellMpc: lssField.cellMpc,
+      grid: lssField.grid,
+      seed: lssField.seed,
+      flag: lssField.flag,
+      provenance: `generated · ${lssField.flag} · DESI DR1 is the science reference, not the source`,
+      pointCount: live?.userData.pointCount ?? 0,
+    };
+  }
   if (!selection || selection.pointIndex === undefined || !starIndex?.tile) return null;
   const tile = starIndex.tile;
   const index = selection.pointIndex;

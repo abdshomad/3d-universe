@@ -43,6 +43,7 @@ export function parseField(header, cube) {
     radiusMpc: header.radius_mpc,
     cellMpc: header.cell_mpc,
     flag,
+    seed: header.dataset?.seed,
     scienceReference: header.dataset.science_reference,
   };
 }

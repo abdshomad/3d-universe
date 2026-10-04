@@ -95,8 +95,27 @@ export function cardForEvent(event, { observerYear } = {}) {
   return card(event.name ?? event.id, pairs, event.provenance ?? event.citation?.dataset ?? 'measured');
 }
 
+/**
+ * The modelled large-scale tier. This card exists mostly to say what the tier
+ * is *not*: a model of structure, never a survey map. Nothing here was measured.
+ */
+export function cardForField(field, { pointCount } = {}) {
+  if (!field) return null;
+  const drawn = pointCount ?? field.pointCount ?? 0;
+  return card(field.name ?? 'Large-scale structure', [
+    ['is', field.is ?? 'a model of structure'],
+    ['is not', 'a survey map — no galaxy here is measured'],
+    ['radius', `${formatNumber(field.radiusMpc ?? 0, 0)} Mpc`],
+    ['cell', `${formatNumber(field.cellMpc ?? 0, 1)} Mpc`],
+    ['grid', `${field.grid ?? 0}³`],
+    ['cells drawn', formatNumber(drawn, 0)],
+    ['seed', String(field.seed ?? '—')],
+  ], field.provenance ?? `generated · ${field.flag ?? 'SIMULATED'}`);
+}
+
 const BUILDERS = {
   star: cardForStar,
+  field: cardForField,
   landmark: cardForLandmark,
   pulsar: cardForEvent,
   frb: cardForEvent,
