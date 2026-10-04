@@ -62,3 +62,6 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   (needs a node material), point size in world units vanishes at 1e12 m (screen-space now), and a
   far plane taken from the camera's distance clips every star a parsec away. App is served by pm2
   from `ecosystem.config.cjs`, port read from `.env`, which pm2 watches.
+- 2026-10-04 — `n` #9 (sub-plan 02): frame budget controller. The atlas sheds stars when frames run
+  long and restores them slowly when they recover. Proven live against a 60,000-star tile under
+  software rendering: 11 drops to the 3,000-point floor, frame time 95.8 ms to 74.2 ms.

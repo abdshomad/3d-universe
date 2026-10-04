@@ -6,6 +6,7 @@
  * zero.
  */
 
+import { FrameBudgetController } from './core/frame-budget.js';
 import { LodTree } from './core/lod-tree.js';
 import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
@@ -14,13 +15,14 @@ import { AtlasScene } from './render/scene.js';
 import { formatScale } from './core/units.js';
 
 const TILE_DIR = '../assets/tiles';
-const BUDGET_POINTS = 60000;
+const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 
 const canvas = document.getElementById('view');
 const readout = document.getElementById('readout');
 
 const atlas = new AtlasScene({ canvas, aspect: 1 });
 window.__atlas = atlas;
+atlas.budget = budget;
 
 let visible = [];
 let tiles = [];
@@ -70,6 +72,7 @@ async function start() {
     refreshViewRange();
     atlas.frame(delta);
     atlas.measure(now);
+    if (budget.sample(delta).changed) redraw();
     updateReadout();
     requestAnimationFrame(loop);
   };
@@ -85,7 +88,7 @@ function redraw() {
     planes: planesFromCamera({ direction }),
     position,
     direction,
-    budgetPoints: BUDGET_POINTS,
+    budgetPoints: budget.budgetPoints,
   }).visible;
 
   atlas.clearPoints();
@@ -133,7 +136,7 @@ function updateReadout() {
   if (readout) {
     readout.textContent = [
       `${fps.toFixed(1)} fps · ${backend}`,
-      `${points} points`,
+      `${points}/${budget.budgetPoints} points`,
       `view scale ${scale}`,
       `depth ${near.toExponential(1)}–${far.toExponential(1)} m`,
     ].join(' · ');

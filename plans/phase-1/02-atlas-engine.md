@@ -37,7 +37,10 @@ solve scale without the camera ever visibly snapping.
   12,219 Gaia stars drawn as screen-space points sized and brightened from magnitude. Measured
   under SwiftShader software rendering at ~9–12 fps; that is a floor, not a GPU number. Points
   rebased whenever the floating origin moves, and near/far bracket the visible content.
-- [ ] `[TODO]` Frame budget controller: LOD degrades before frame rate does.
+- [x] Frame budget controller: `web/src/core/frame-budget.js`. Slow frames cut the point budget
+  fast, fast frames restore it slowly, so the atlas thins before it stutters and never breathes.
+  Verified live in a headless browser with a 60,000-star tile: 11 drops from 120,000 to the 3,000
+  floor, frame time 95.8 ms → 74.2 ms as the load fell.
 - [ ] `[TODO]` Post chain: bloom → ACES tonemap → vignette (floor `#05060A`, never crushed to
   `#000000`).
 - [ ] `[TODO]` Deterministic camera path format so a cinematic route is data, not code.
