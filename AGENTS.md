@@ -74,3 +74,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   Also caught a silent one: the post chain's `vec4()` got an RGBA node, which the node builder
   rejected, so the whole chain — including the void floor — was never applied. Painting the page red
   proved it: with the chain on the void stays `#05060a`; with it off the red shows through.
+- 2026-10-04 — `n` #12 (sub-plan 02, final): performance harness. `scripts/perf-check.py` times a
+  fixed route in a headless browser and fails the run on budget or stall; budgets live in
+  `config/perf-budgets.json`. Found while wiring it: the harness was recording the *clamped* frame
+  step, so every frame measured exactly 100 ms. Now it records the real interval — median 0.167 s,
+  p95 0.20 s, worst 0.25 s at 3,000 points under software rendering.

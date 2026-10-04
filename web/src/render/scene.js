@@ -14,6 +14,7 @@ import { PerspectiveCamera, Scene, WebGPURenderer } from 'three';
 
 import { CameraRig } from '../core/camera-rig.js';
 import { FloatingOrigin } from '../core/floating-origin.js';
+import { PerfRecorder } from '../core/perf-recorder.js';
 import { PostChain } from './post.js';
 
 const DEFAULT_FOV = 60;
@@ -35,6 +36,7 @@ export class AtlasScene {
     this.viewRange = null;
     this.stats = { fps: 0, points: 0, drawCount: 0, backend: 'unknown', frames: 0, near: 0, far: 0 };
     this._frames = 0;
+    this.perf = new PerfRecorder();
     this._windowStart = 0;
   }
 
@@ -102,11 +104,13 @@ export class AtlasScene {
     this.stats.far = far;
   }
 
-  /** Advance the rig, resync, render one frame. */
-  frame(deltaSeconds) {
+  /** Advance the rig, resync, render a frame. `measured` is the real frame
+   *  time when the caller clamps the step for simulation stability. */
+  frame(deltaSeconds, measured = deltaSeconds) {
     this.rig.autoDrift(0.004).update(deltaSeconds);
     this.syncCamera();
     this.post.render(this.renderer, this.scene, this.camera);
+    this.perf.record(measured);
     this._frames += 1;
     return this;
   }

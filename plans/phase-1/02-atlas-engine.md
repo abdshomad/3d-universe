@@ -50,7 +50,10 @@ solve scale without the camera ever visibly snapping.
   yields the same position, independent of frame rate. Verified in a browser: the route runs sol →
   nearby-stars → neighbourhood → open-cluster-scale → kpc with radius growing monotonically and the
   waypoint name live in the HUD.
-- [ ] `[TODO]` Performance harness: fixed route, per-frame timings, CI-checkable budget.
+- [x] Performance harness: `scripts/perf-check.py` drives the fixed route in a headless browser,
+  records every frame, and exits non-zero when the run misses its budget. Budgets live in
+  `config/perf-budgets.json`. Measured baseline under SwiftShader with 3,000 points: 124 frames,
+  median 0.167 s (6.0 fps), p95 0.20 s, worst 0.25 s, zero stalls — a floor, not a GPU result.
 
 ## Acceptance
 

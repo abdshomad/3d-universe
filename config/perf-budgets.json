@@ -1,0 +1,12 @@
+{
+  "gpu": {
+    "label": "hardware-accelerated WebGPU or WebGL 2",
+    "budgetFrameSeconds": 0.0167,
+    "stallSeconds": 0.25
+  },
+  "software": {
+    "label": "SwiftShader or any software rasteriser",
+    "budgetFrameSeconds": 0.25,
+    "stallSeconds": 2.0
+  }
+}

@@ -54,6 +54,7 @@ npm test              # node --test: 33 checks over the engine, LOD and tile rea
 npm run bake          # fetch Gaia, quantize, write assets/tiles
 npm run serve         # http://127.0.0.1:$PORT/web/index.html  (port from .env)
 pm2 start ecosystem.config.cjs && pm2 save    # keep it running across reboots
+python3 scripts/perf-check.py --seconds 25    # headless frame timings, exits non-zero on budget miss
 ```
 
 `.env` holds `PORT` and `HOST`. pm2 watches that one file, so changing the port restarts the

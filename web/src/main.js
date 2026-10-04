@@ -65,7 +65,10 @@ async function start() {
   const loop = (now) => {
     // requestAnimationFrame timestamps the start of a frame, which can predate a
     // performance.now() taken just before it, so the first delta can be negative.
-    const delta = Math.max(0, Math.min((now - previous) / 1000, 0.1));
+    // The step is clamped so a long stall cannot teleport the camera; the
+    // unclamped value is what the performance harness records.
+    const measured = Math.max(0, (now - previous) / 1000);
+    const delta = Math.min(measured, 0.1);
     previous = now;
     routeTime += delta;
     const shot = route.sample(routeTime);
@@ -76,7 +79,7 @@ async function start() {
     atlas.stats.routeSeconds = routeTime;
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
     refreshViewRange();
-    atlas.frame(delta);
+    atlas.frame(delta, measured);
     atlas.measure(now);
     if (budget.sample(delta).changed) redraw();
     updateReadout();

@@ -1,0 +1,24 @@
+{
+  "url": "http://0.0.0.0:4038/web/index.html",
+  "profile": "software",
+  "backend": "webgl2",
+  "budget": {
+    "label": "SwiftShader or any software rasteriser",
+    "budgetFrameSeconds": 0.25,
+    "stallSeconds": 2.0
+  },
+  "waypointAtEnd": "nearby-stars",
+  "pointsDrawn": 3000,
+  "pageErrors": [],
+  "count": 124,
+  "medianSeconds": 0.16660000000000036,
+  "p95Seconds": 0.2,
+  "p99Seconds": 0.23329999999999992,
+  "worstSeconds": 0.2501000000000004,
+  "fpsFromMedian": 6.002400960384141,
+  "overBudget": 1,
+  "stalls": 0,
+  "passed": true,
+  "budgetFrameSeconds": 0.25,
+  "stallSeconds": 2
+}
