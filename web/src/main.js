@@ -6,7 +6,9 @@
  * zero.
  */
 
+import { Raycaster, Vector2 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
+import { identityAt, isClick, pickFromHits } from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
 import { createTierBudget } from './core/tier-budget.js';
 import { planesFromCamera } from './core/frustum.js';
@@ -81,6 +83,21 @@ const canvas = document.getElementById('view');
 const hud = document.getElementById('hud');
 
 const atlas = new AtlasScene({ canvas, aspect: 1 });
+
+let pointerDown = null;
+canvas.addEventListener('pointerdown', (event) => {
+  pointerDown = { x: event.clientX, y: event.clientY, time: performance.now() };
+});
+canvas.addEventListener('pointerup', (event) => {
+  if (!isClick(pointerDown, { x: event.clientX, y: event.clientY, time: performance.now() })) return;
+  pointerDown = null;
+  const hit = pickAt(event.clientX, event.clientY);
+  cardSelection = hit;
+  if (hit) guide.record('selected');
+  atlas.stats.picked = hit?.id ?? null;
+  rebuildReticle(); // the reticle pins to the pick instead of the view centre
+});
+
 window.__atlas = atlas;
 atlas.budget = budget;
 atlas.flight = flight;
@@ -219,6 +236,7 @@ async function start() {
     }
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
     refreshViewRange();
+    dropStaleSelection();
     atlas.frame(delta, measured);
     atlas.measure(now);
     if (budget.sample(delta).changed) redraw();
@@ -349,6 +367,61 @@ function rebuildSparks() {
   atlas.stats.eventPlaced = worldPositions.size;
 }
 
+/**
+ * A click names whatever is under it; a drag steers. The raycast threshold is
+ * what a few pixels are worth at the depth of the object under the reticle, so
+ * the pick is not easier at one scale than another.
+ */
+function pickAt(clientX, clientY) {
+  if (!starIndex?.tile) return null;
+  const rect = canvas.getBoundingClientRect();
+  const ndc = new Vector2(
+    ((clientX - rect.left) / rect.width) * 2 - 1,
+    -((clientY - rect.top) / rect.height) * 2 + 1,
+  );
+  const raycaster = new Raycaster();
+  raycaster.setFromCamera(ndc, atlas.camera);
+
+  const reference = selectNearestToView(directionFromRig(atlas.rig));
+  const depthPc = reference ? reference.world.length() / METRES_PER_PC : 1;
+  const perPixel = worldWidthForPixels(depthPc * METRES_PER_PC, 1, atlas.camera.fov, rect.height);
+  raycaster.params.Points.threshold = perPixel * 4;
+
+  const hits = raycaster.intersectObjects(atlas.layers, false).map((hit) => ({
+    tileId: hit.object.userData?.tileId ?? null,
+    index: hit.index,
+    distance: hit.distance,
+  }));
+  const best = pickFromHits(hits, { tileId: starIndex.tile.header.tile_id });
+  if (!best) return null;
+  const identity = identityAt({
+    tile: starIndex.tile,
+    index: best.index,
+    originMetres: atlas.origin.originMetres,
+  });
+  if (!identity) return null;
+  return { ...identity, world: starIndex.positions[best.index] };
+}
+
+/**
+ * When the LOD drops the star set, any star selection goes with it. A card
+ * that keeps naming a star which is no longer drawn is the one lie this
+ * project exists to avoid.
+ */
+function dropStaleSelection() {
+  if (atlas.stats.points > 0) return;
+  if (!cardSelection?.world && selection === null) return;
+  cardSelection = null;
+  selection = null;
+  if (reticle) {
+    atlas.scene.remove(reticle);
+    reticle.geometry.dispose();
+    reticle.material.dispose();
+    reticle = null;
+  }
+  atlas.stats.selection = null;
+}
+
 /** Nearest measured star to the view centre: the object the reticle locks onto. */
 function selectNearestToView(direction, maxAngleDeg = 6) {
   if (!starIndex) return null;
@@ -382,7 +455,9 @@ function rebuildReticle() {
     reticle = null;
   }
   const direction = directionFromRig(atlas.rig);
-  selection = selectNearestToView(direction);
+  // A clicked selection is pinned: the reticle stays on it instead of sliding
+  // to whatever is at the centre of the screen.
+  selection = cardSelection?.world ? cardSelection : selectNearestToView(direction);
   if (selection) guide.record('selected');
   atlas.stats.selection = selection?.id ?? null;
   if (!selection) return;
@@ -634,6 +709,7 @@ function hudSelection() {
       pointCount: live?.userData.pointCount ?? 0,
     };
   }
+  if (!atlas.stats.points) return null; // nothing drawn, nothing to claim
   if (!selection || selection.pointIndex === undefined || !starIndex?.tile) return null;
   const tile = starIndex.tile;
   const index = selection.pointIndex;

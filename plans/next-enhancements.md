@@ -11,6 +11,22 @@ much they close the project's stated promises — not by how easy they are.
 **Why now.** PRD core feature 7 says *every selection shows a fact card*. Today a selection only
 exists after you type a name: search resolves a HIP, the route flies there, the card appears. A
 click — the most natural gesture in a 3D atlas — does nothing. I deferred this while building the
+
+**Status: done, 2026-10-04** — `web/src/core/picker.js` holds the decisions (click vs drag, which
+hit wins, what a hit *is*), and `main.js` owns only the raycast. The threshold is what four pixels
+are worth at the depth of the object under the reticle, so a pick is neither easier nor harder at
+one scale than another. Verified live at 10 pc among 72,219 stars: a centre click selected
+GAIA 2739689239311660672 at 4.118 pc — a *nearer* star than the reticle's 85.9 pc candidate, which
+is the whole point of clicking rather than centring. The pick pins: steering the view away, and the
+LOD dropping to 3,000 points, leaves the reticle and the card on the star that was clicked. A drag
+picks nothing. Ten tests cover the identity maths, including that a pick resolves to the same
+distance the tile encodes and that an unsupported unit is refused rather than mis-scaled.
+
+**One bug this surfaced, worth keeping.** At 1 Mpc the LOD drops every star, and the card kept
+naming GAIA 3891136711141807232 at 85.944 pc — a star no longer on screen. `dropStaleSelection` now
+clears any star selection when the LOD drops the star set. A card asserting a measurement about
+something not drawn is precisely the failure this project exists to prevent, and nothing about it
+looked wrong until the screenshot was read.
 cards, and it is now the largest gap between what the PRD promises and what the app does.
 
 **Scope.** A raycast against the star layers and the spark layers, resolving a hit to a catalog
