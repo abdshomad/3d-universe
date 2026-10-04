@@ -7,6 +7,8 @@
  * and a flux, a star has a magnitude, a landmark has a parallax with its error.
  */
 
+import { emissionYear, formatLookback, formatYear, lookbackYears } from '../core/light-travel.js';
+
 const DASH = '—';
 
 export class UnknownObjectKindError extends Error {}
@@ -29,24 +31,36 @@ function rows(pairs) {
   return pairs.map(([label, value]) => [label, value ?? DASH]);
 }
 
+/** The row every card carries: when the light we are looking at left. */
+function lightRow(distancePc, observerYear) {
+  if (lookbackYears(distancePc) === null || !observerYear) return null;
+  return [
+    'light left',
+    `${formatYear(emissionYear(distancePc, observerYear))} · ${formatLookback(lookbackYears(distancePc))}`,
+  ];
+}
+
 function card(name, rowPairs, provenance, extra = {}) {
   return { name, rows: rows(rowPairs), provenance, image: null, ...extra };
 }
 
 /** A star from a baked catalogue tile. */
-export function cardForStar(selection) {
+export function cardForStar(selection, { observerYear } = {}) {
   if (!selection) return null;
+  const light = lightRow(selection.distancePc, observerYear);
   return card(selection.name ?? `gaia ${selection.id}`, [
     ['catalogue id', selection.id],
     ['distance', formatDistance(selection.distancePc)],
     ['apparent mag', formatNumber(selection.magnitude, 2)],
     ['colour index B-V', formatNumber(selection.colorIndex, 2)],
+    ...(light ? [light] : []),
   ], selection.provenance ?? 'esa.gaia DR3 · U3DTILE2 · measured');
 }
 
 /** A landmark whose distance comes from a measured parallax. */
-export function cardForLandmark(entry) {
+export function cardForLandmark(entry, { observerYear } = {}) {
   if (!entry) return null;
+  const light = lightRow(entry.distance_pc, observerYear);
   const error = entry.parallax_error_mas ? ` ± ${formatNumber(entry.parallax_error_mas, 2)}` : '';
   return card(entry.name ?? `HIP ${entry.hip}`, [
     ['catalogue', `HIP ${entry.hip}`],
@@ -60,12 +74,14 @@ export function cardForLandmark(entry) {
         ? `${entry.cross_check_arcsec}″ vs SIMBAD`
         : DASH,
     ],
+    ...(light ? [light] : []),
   ], `${entry.provenance ?? 'hipparcos-parallax'} · Hipparcos via VizieR I/239/hip_main`);
 }
 
 /** An event: pulsar, fast radio burst, gravitational wave. */
-export function cardForEvent(event) {
+export function cardForEvent(event, { observerYear } = {}) {
   if (!event) return null;
+  const light = lightRow(event.distance_pc, observerYear);
   const pairs = [
     ['catalogue', event.name ?? event.id],
     ['kind', event.kind],
@@ -75,6 +91,7 @@ export function cardForEvent(event) {
   if (event.age_yr !== undefined) pairs.push(['age', `${formatNumber(event.age_yr, 0)} yr`]);
   pairs.push(['distance', formatDistance(event.distance_pc)]);
   pairs.push(['distance from', event.distance_source ?? 'unknown']);
+  if (light) pairs.push(light);
   return card(event.name ?? event.id, pairs, event.provenance ?? event.citation?.dataset ?? 'measured');
 }
 
@@ -90,9 +107,9 @@ const BUILDERS = {
  * Build the card for whichever kind of thing was selected.
  * @param {{kind: string} & Record<string, unknown>} object
  */
-export function cardFor(object) {
+export function cardFor(object, options = {}) {
   if (!object) return null;
   const builder = BUILDERS[object.kind];
   if (!builder) throw new UnknownObjectKindError(`no card for kind ${object.kind}`);
-  return builder(object);
+  return builder(object, options);
 }

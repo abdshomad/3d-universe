@@ -27,7 +27,12 @@ Depends on 03.
   `2.637 pc · parallax 379.21 ± 1.58 mas · cross-check 0.16″ vs SIMBAD`. Planet, galaxy and nebula
   cards are **not** written — we hold no exoplanet, galaxy or nebula catalogue yet, and a card over
   invented data is the failure this project exists to avoid. They arrive with their ingest.
-- [ ] `[TODO]` Light-travel-time scrubber: move the observer through epochs and watch the sky change.
+- [x] Light-travel-time scrubber — `web/src/core/light-travel.js` plus a HUD slider that moves the
+  observer's epoch. It reports when each object's light left and will arrive, and the span of epochs
+  currently on screen (`observer 2026 CE · sky spans 1464 – 2026`). It deliberately does **not**
+  re-render the sky: our catalogues describe one epoch, so pretending otherwise would be the easiest
+  lie available to this project. Verified: +2000 years moves both ends of the span by exactly 2000
+  while Sirius's lookback stays 8.6 yr, which is the correct physics.
 - [ ] `[TODO]` Onboarding: a 30-second opening that teaches flight without a tutorial wall.
 - [ ] `[TODO]` Accessibility: keyboard-only flight, reduced-motion mode, readable contrast for type.
 - [ ] `[TODO]` Deep links: a URL restores position, orientation, scale, and selection.

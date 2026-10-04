@@ -27,6 +27,7 @@ import { hudModel, renderHud } from './ui/hud.js';
 import { FlightController, inputFromKeys } from './core/flight-controls.js';
 import { journeyFromLandmarks } from './core/journey.js';
 import { SearchIndex, flightPathTo } from './core/search.js';
+import { epochSpan, formatYear } from './core/light-travel.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
@@ -124,6 +125,7 @@ async function start() {
   await atlas.init();
   atlas.resize(canvas.clientWidth, canvas.clientHeight);
   await backdrop.load();
+  attachEpochScrubber();
 
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
@@ -189,6 +191,7 @@ async function start() {
     atlas.measure(now);
     if (budget.sample(delta).changed) redraw();
     updateHud();
+    epochReadout();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -434,12 +437,37 @@ function updateHud(now = performance.now()) {
     selection: hudSelection(),
     flags: hudFlags(),
     sources: hudSources(),
+    observerYear,
     minPc: hudRangePc()[0],
     maxPc: hudRangePc()[1],
   }));
 }
 
 let cardSelection = null;
+let observerYear = new Date().getFullYear();
+
+/** The scrubber moves the observer's epoch. It does not re-render the sky: our
+ *  catalogues describe one epoch, and pretending otherwise would be the easiest
+ *  lie available to this project. */
+function attachEpochScrubber() {
+  const slider = document.getElementById('epoch');
+  const line = document.getElementById('epoch-line');
+  if (!slider) return;
+  slider.addEventListener('input', () => {
+    observerYear = new Date().getFullYear() + Number(slider.value);
+    atlas.stats.observerYear = observerYear;
+  });
+  slider.hidden = false;
+  line.hidden = false;
+}
+
+function epochReadout() {
+  const line = document.getElementById('epoch-line');
+  if (!line || !visible.length) return;
+  const distances = [hudRangePc()[0] ?? 0, hudRangePc()[1] ?? 0];
+  const span = epochSpan(distances, observerYear);
+  line.textContent = `observer ${observerYear} CE · sky spans ${formatYear(span.oldestYear)} – ${formatYear(span.newestYear)}`;
+}
 
 function hudSelection() {
   if (!selection || selection.pointIndex === undefined || !starIndex?.tile) return null;

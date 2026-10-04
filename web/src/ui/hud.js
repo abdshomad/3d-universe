@@ -29,13 +29,16 @@ export function provenanceBadge(flags = {}) {
  *          minPc?: number|null, maxPc?: number|null}} state
  */
 export function hudModel(state = {}) {
-  const { stats = {}, selection = null, flags = {}, sources = [], minPc = null, maxPc = null } = state;
+  const {
+    stats = {}, selection = null, flags = {}, sources = [],
+    minPc = null, maxPc = null, observerYear = null,
+  } = state;
 
   return {
     title: '3D UNIVERSE',
     subtitle: 'a provenance-honest atlas',
     nav: [...NAV_ITEMS],
-    factCard: selection ? cardFor(selection) : null,
+    factCard: selection ? cardFor(selection, { observerYear }) : null,
     readout: {
       objects: stats.points ?? 0,
       distance: `${formatDistance(minPc)} – ${formatDistance(maxPc)}`,

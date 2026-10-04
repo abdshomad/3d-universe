@@ -70,6 +70,10 @@
       #search:focus { outline: none; border-color: rgba(138, 143, 152, 0.55); }
       #search::placeholder { color: var(--ink-dim); }
       #search-result { position: absolute; top: 74px; right: 16px; color: var(--ink-dim); }
+      #epoch { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+        display: none; }
+      #epoch-line { position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%);
+        color: var(--ink-dim); white-space: pre; }
     </style>
   </head>
   <body>
@@ -99,6 +103,9 @@
         <div><span class="label">data source</span><span class="value" data-hud="source">none</span></div>
       </div>
 
+      <div id="epoch-line">sky epoch —</div>
+      <input id="epoch" type="range" min="-10000" max="10000" step="10" value="0"
+             aria-label="observer epoch, years from now" />
       <div id="badge" data-hud="badge">EMPTY</div>
     </div>
 

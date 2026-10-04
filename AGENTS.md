@@ -146,3 +146,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   failure this project exists to avoid. Two bugs the browser caught: a search entry's description
   overwrote the card's kind and broke the dispatcher, and a missing cross-check rendered the word
   'undefined' in a fact card. 174/174 tests pass.
+- 2026-10-04 — `n` #27 (sub-plan 04): light-travel-time scrubber. A 3D sky has no single 'now':
+  one star is seen three years late, another three thousand. Every fact card now carries the row
+  'light left 2017 - 8.6 yr ago', and the HUD reports the span of epochs on screen. The scrubber
+  moves the observer's epoch and recomputes arrivals; it deliberately does not re-render the sky,
+  because our catalogues describe one epoch and faking a second would be the easiest lie here.
+  182/182 tests pass.
