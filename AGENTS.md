@@ -115,3 +115,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   starts with a blank line, so the first line taken as a header parsed every row to {}. Distances
   carry their provenance - parallax or dispersion measure - all the way to the fact card. 130/130
   tests pass.
+- 2026-10-04 — `n` #20 (sub-plan 03): the HUD, as a pure view model so its rules are tested without
+  a browser. The badge is the point: SIMULATED outranks UNRESOLVED outranks MEASURED, and it reads
+  UNRESOLVED here because measured stars and unresolved dust share the frame. A missing B-V shows as
+  an em dash, not a zero. 137/137 tests pass.

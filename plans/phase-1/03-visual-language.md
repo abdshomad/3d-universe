@@ -42,7 +42,11 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   distance **labelled by how it was derived** — parallax or dispersion measure. Glyph size follows the
   measured flux. An event with no catalogue distance is not placed: 583 of 598 are drawn, the rest
   have a direction but no place.
-- [ ] `[TODO]` **HUD**: title lockup, thin top nav, fact card, boxed readout, provenance badge.
+- [x] **HUD**: `web/src/ui/hud.js` is a pure view model — state in, HUD out — so the rules are tested
+  without a browser. Title lockup, thin top nav, fact card with a provenance line, three boxed
+  readout numbers, and a badge whose precedence is SIMULATED > UNRESOLVED > MEASURED. Verified live:
+  badge `UNRESOLVED`, 14,118 objects, fact card on Gaia 3840328107022576896 reading
+  `esa.gaia DR3 · U3DTILE2 · measured`, unknown B−V shown as `—` rather than 0.
 - [ ] `[TODO]` **Camera grammar**: constant slow drift, exponential scale changes, no cuts.
 
 ## Honesty rules (hard requirements, not style)

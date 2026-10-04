@@ -12,7 +12,6 @@ import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
 import { createStarLayer } from './render/star-layer.js';
 import { AtlasScene } from './render/scene.js';
-import { formatScale } from './core/units.js';
 import { createScaleOutPath } from './routes/scale-out.js';
 import { DEEP_FIELDS } from './data/deep-fields.js';
 import { Backdrop } from './render/backdrop.js';
@@ -22,8 +21,9 @@ import { createStarDust } from './render/star-dust.js';
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
 import { createSparkLayers } from './render/sparks.js';
-import { celestialDirection } from './core/celestial.js';
 import { METRES_PER_PC } from './core/units.js';
+import { celestialDirection } from './core/celestial.js';
+import { hudModel, renderHud } from './ui/hud.js';
 
 const TILE_DIR = '../assets/tiles';
 let reticle = null;
@@ -37,7 +37,7 @@ const route = createScaleOutPath();
 let routeTime = 0;
 
 const canvas = document.getElementById('view');
-const readout = document.getElementById('readout');
+const hud = document.getElementById('hud');
 
 const atlas = new AtlasScene({ canvas, aspect: 1 });
 window.__atlas = atlas;
@@ -113,7 +113,7 @@ async function start() {
     atlas.frame(delta, measured);
     atlas.measure(now);
     if (budget.sample(delta).changed) redraw();
-    updateReadout();
+    updateHud();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -253,7 +253,11 @@ function selectNearestToView(direction, maxAngleDeg = 6) {
   }
   if (bestIndex < 0 || best < limit) return null;
   const id = starIndex.tile?.ids?.[bestIndex];
-  return { world: starIndex.positions[bestIndex], id: id === undefined ? null : id.toString() };
+  return {
+    world: starIndex.positions[bestIndex],
+    id: id === undefined ? null : id.toString(),
+    pointIndex: bestIndex,
+  };
 }
 
 /** The annotation around the selected object, sized in screen space. */
@@ -343,21 +347,67 @@ function directionFromRig(rig) {
   return directionFromAngles(rig.yaw, rig.pitch);
 }
 
-function updateReadout() {
-  const { fps, points, backend, near, far } = atlas.stats;
-  const scale = formatScale(Math.hypot(...atlas.rig.positionMetres));
-  if (readout) {
-    readout.textContent = [
-      `${atlas.stats.waypoint ?? 'free flight'} · ${fps.toFixed(1)} fps · ${backend}`,
-      `${points}/${budget.budgetPoints} points`,
-      `view scale ${scale}`,
-      `depth ${near.toExponential(1)}–${far.toExponential(1)} m`,
-    ].join(' · ');
+let lastHudPaint = 0;
+
+/** What is on screen, in the words the art direction uses. */
+function updateHud(now = performance.now()) {
+  if (now - lastHudPaint < 200) return;
+  lastHudPaint = now;
+  if (!hud) return;
+  renderHud(hud, hudModel({
+    stats: atlas.stats,
+    selection: hudSelection(),
+    flags: hudFlags(),
+    sources: hudSources(),
+    minPc: hudRangePc()[0],
+    maxPc: hudRangePc()[1],
+  }));
+}
+
+function hudSelection() {
+  if (!selection || selection.pointIndex === undefined || !starIndex?.tile) return null;
+  const tile = starIndex.tile;
+  const index = selection.pointIndex;
+  return {
+    id: selection.id,
+    distancePc: selection.world.length() / METRES_PER_PC,
+    magnitude: tile.magnitudes ? tile.magnitudes[index] / 1000 : null,
+    colorIndex: null,
+    provenance: `${tile.header.provenance.catalog} ${tile.header.provenance.release} · U3DTILE2 · measured`,
+  };
+}
+
+function hudFlags() {
+  const flags = {};
+  if (atlas.layers.length > 0) flags.MEASURED = true;
+  if (sparkLayers.length > 0) flags.MEASURED = true;
+  if (dustLayers.length > 0) flags.UNRESOLVED = true;
+  return flags;
+}
+
+function hudSources() {
+  const sources = [];
+  for (const entry of tree?.tiles ?? []) sources.push(entry.id);
+  if (relationPayload) sources.push('constellation figures');
+  if (eventPayload) sources.push('ATNF pulsars');
+  return sources;
+}
+
+function hudRangePc() {
+  const position = atlas.rig.positionMetres;
+  let min = Infinity;
+  let max = 0;
+  for (const chosen of visible) {
+    const distance = chosen.box.distanceToPoint(position);
+    min = Math.min(min, distance);
+    max = Math.max(max, distance + chosen.box.boundingRadius());
   }
+  if (!Number.isFinite(min)) return [null, null];
+  return [min / METRES_PER_PC, max / METRES_PER_PC];
 }
 
 start().catch((error) => {
-  if (readout) readout.textContent = `failed: ${error.message}`;
+  if (hud) hud.dataset.error = error.message;
   window.__atlasError = error.message;
   throw error;
 });

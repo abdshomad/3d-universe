@@ -5,9 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>3D Universe</title>
     <style>
-      :root { color-scheme: dark; }
-      html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; }
+      :root {
+        color-scheme: dark;
+        --void: #05060a;
+        --ink: #8a8f98;
+        --ink-dim: #5c626d;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--void); overflow: hidden; }
       #view { display: block; width: 100vw; height: 100vh; }
+
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        font: 11px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
       /* Vignette lives in display space, not the scene: it darkens the corners
          of the frame without touching a single star's colour. */
       #vignette {
@@ -19,22 +35,64 @@
           rgba(5, 6, 10, 0.35) 78%,
           rgba(5, 6, 10, 0.75) 100%);
       }
-      #readout {
-        position: fixed;
-        left: 12px;
-        bottom: 10px;
-        font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #8a8f98;
-        pointer-events: none;
-      }
+
+      #title-lockup { position: absolute; top: 14px; left: 16px; }
+      #title-lockup .mark { display: inline-block; width: 9px; height: 9px; margin-right: 8px;
+        border: 1px solid var(--ink); transform: rotate(45deg); }
+      #title-lockup .name { font-size: 12px; letter-spacing: 0.28em; color: #c6cad2; }
+      #title-lockup .sub { display: block; margin-top: 3px; color: var(--ink-dim); letter-spacing: 0.18em; }
+
+      #nav { position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+        max-width: 52vw; overflow: hidden; color: var(--ink-dim); white-space: pre; }
+
+      #factcard { position: absolute; bottom: 18px; left: 16px; width: 268px; padding: 10px 12px;
+        border: 1px solid rgba(138, 143, 152, 0.22); background: rgba(5, 6, 10, 0.55); }
+      #factcard[hidden] { display: none; }
+      #factcard .name { color: #c6cad2; letter-spacing: 0.2em; }
+      #factcard .rows { margin: 7px 0; white-space: pre; color: var(--ink); letter-spacing: 0.08em; }
+      #factcard .provenance { color: var(--ink-dim); letter-spacing: 0.1em; font-size: 10px; }
+      #factcard img { width: 96px; height: 96px; object-fit: cover; float: right; margin: 0 0 6px 8px; }
+
+      #readout { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 10px; }
+      #readout div { padding: 6px 11px; border: 1px solid rgba(138, 143, 152, 0.22);
+        background: rgba(5, 6, 10, 0.55); }
+      #readout .label { display: block; color: var(--ink-dim); font-size: 9px; letter-spacing: 0.2em; }
+      #readout .value { color: #c6cad2; font-size: 12px; letter-spacing: 0.12em; }
+
+      #badge { position: absolute; bottom: 18px; right: 16px; padding: 6px 11px;
+        border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2; letter-spacing: 0.22em; }
+      #hud-meta { position: absolute; top: 14px; right: 16px; color: var(--ink-dim); text-align: right; }
     </style>
   </head>
   <body>
     <canvas id="view"></canvas>
     <div id="vignette"></div>
-    <div id="readout">loading</div>
+
+    <div id="hud">
+      <div id="title-lockup">
+        <span class="mark" aria-hidden="true"></span><span class="name" data-hud="title">3D UNIVERSE</span>
+        <span class="sub" data-hud="subtitle">a provenance-honest atlas</span>
+      </div>
+      <div id="nav" data-hud="nav">ATLAS · ROUTE · TIERS · PROVENANCE</div>
+      <div id="hud-meta"><span data-hud="waypoint">free flight</span></div>
+
+      <div id="factcard" data-hud="factcard" hidden>
+        <img data-fact="image" alt="" hidden />
+        <div class="name" data-fact="name"></div>
+        <div class="rows" data-fact="rows"></div>
+        <div class="provenance" data-fact="provenance"></div>
+      </div>
+
+      <div id="readout">
+        <div><span class="label">objects in view</span><span class="value" data-hud="objects">0</span></div>
+        <div><span class="label">distance range</span><span class="value" data-hud="distance">—</span></div>
+        <div><span class="label">data source</span><span class="value" data-hud="source">none</span></div>
+      </div>
+
+      <div id="badge" data-hud="badge">EMPTY</div>
+    </div>
+
     <script type="importmap">
       {
         "imports": {
