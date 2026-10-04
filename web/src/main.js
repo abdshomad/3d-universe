@@ -562,6 +562,14 @@ function rebuildSparks() {
   });
   for (const layer of sparkLayers) atlas.scene.add(layer);
   atlas.stats.events = sparkLayers.reduce((total, layer) => total + layer.userData.count, 0);
+  // 559 of 598 of these rest on a dispersion measure. The layer says so with a
+  // hollow glyph rather than a card row nobody opens.
+  atlas.stats.eventsEstimated = sparkLayers.reduce((total, layer) => total + (layer.userData.estimated ?? 0), 0);
+  atlas.stats.eventsMeasured = sparkLayers.reduce((total, layer) => total + (layer.userData.measured ?? 0), 0);
+  // 15 of the 598 have no distance at all and are never drawn. Saying so keeps
+  // the arithmetic closed: catalogued = drawn + unplaced.
+  atlas.stats.eventsDrawn = atlas.stats.eventsMeasured + atlas.stats.eventsEstimated;
+  atlas.stats.eventsUnplaced = atlas.stats.events - atlas.stats.eventsDrawn;
   atlas.stats.eventPlaced = worldPositions.size;
 }
 

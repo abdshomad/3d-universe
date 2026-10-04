@@ -29,11 +29,30 @@ export const EVENT_KINDS = {
 };
 
 /** The two crossing strokes of a `+`, in the plane facing the camera. */
-export function sparkGlyphPoints({ size = 1 } = {}) {
-  return [
-    [-size, 0, 0], [size, 0, 0],
-    [0, -size, 0], [0, size, 0],
-  ];
+export function sparkGlyphPoints({ size = 1, hollow = false } = {}) {
+  if (!hollow) {
+    return [
+      [-size, 0, 0], [size, 0, 0],
+      [0, -size, 0], [0, size, 0],
+    ];
+  }
+  // A hollow ring for a position that rests on a dispersion measure, so the
+  // difference is visible in the layer and not only on a card row. Shape, not
+  // colour: it has to survive being small and being colour-blind.
+  const points = [];
+  const steps = 12;
+  for (let i = 0; i < steps; i += 1) {
+    const from = (i / steps) * Math.PI * 2;
+    const to = ((i + 1) / steps) * Math.PI * 2;
+    points.push([size * Math.cos(from), 0, size * Math.sin(from)]);
+    points.push([size * Math.cos(to), 0, size * Math.sin(to)]);
+  }
+  return points;
+}
+
+/** A position from a dispersion measure is an estimate, not a measured distance. */
+export function isEstimatedDistance(event) {
+  return Boolean(event) && event.distance_source !== 'parallax';
 }
 
 /** Flux in mJy to a glyph size, logarithmic: pulsar flux spans four decades. */
@@ -68,11 +87,15 @@ export function createSparkLayers({ events, worldPositions, citation }) {
     const style = eventStyle(kind);
     const positions = [];
     const vertexEvent = [];
+    let estimated = 0;
+    let measured = 0;
     group.forEach((event, eventIndex) => {
       const point = worldPositions.get(event.id);
       if (!point) return; // an event we cannot place is not drawn
       const size = sparkSizeForFlux(event.flux_mjy);
-      for (const [x, y, z] of sparkGlyphPoints({ size })) {
+      const hollow = isEstimatedDistance(event);
+      if (hollow) estimated += 1; else measured += 1;
+      for (const [x, y, z] of sparkGlyphPoints({ size, hollow })) {
         positions.push(point[0] + x, point[1] + y, point[2] + z);
         // Recorded rather than inferred: unplaceable events are skipped, so a
         // vertex index is not an event index without this.
@@ -101,6 +124,8 @@ export function createSparkLayers({ events, worldPositions, citation }) {
       label: style.label,
       events: group,
       vertexEvent,
+      estimated,
+      measured,
       citation,
     };
     layers.push(lines);

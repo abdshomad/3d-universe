@@ -58,10 +58,12 @@ test('layers are built per kind, skipping events we cannot place', () => {
   assert.equal(layers.length, 1);
   assert.equal(layers[0].userData.kind, 'pulsar');
   assert.equal(layers[0].userData.count, 3, 'three catalogued events');
+  // Vertices per glyph vary with the distance source — a measured distance
+  // draws a cross, an estimated one a ring — so count the glyphs, not the points.
   assert.equal(
-    layers[0].geometry.getAttribute('position').count,
-    8,
-    'two placed events at four vertices each',
+    new Set(layers[0].userData.vertexEvent).size,
+    2,
+    'two placed events, and the unplaceable one drew nothing',
   );
 });
 

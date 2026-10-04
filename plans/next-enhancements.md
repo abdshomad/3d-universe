@@ -70,6 +70,26 @@ distance.
 
 **Exit.** Every pulsar id resolves against ATNF; the layer distinguishes measured from estimated
 distances, and says how many of each it is drawing.
+**Status: done, 2026-10-05** — `ingest/verify_events.py` round-trips every pulsar back to ATNF through
+VizieR's `B/psr/psr`, in about a second.
+
+> **598 of 598 resolve.** Every id in the atlas traces back to a catalogue row.
+
+The interesting part was the check I expected to fire and did not. The verifier reports any pulsar
+recorded as dispersion-measure whose ATNF row *does* carry a parallax — a measured distance available
+and left unused. **It found none.** The ingest is not under-using measurements; those 559 really do have
+no parallax in the catalogue. Six pytest tests cover the branch, so the zero is a result rather than a
+silent no-op.
+
+**What is now visible in the layer.** A parallax distance draws a filled cross; a dispersion-measure
+distance draws a **hollow ring** — shape rather than colour, so it survives being small and being
+colour-blind. 544 hollow, 39 filled.
+
+**A fourth number the stats did not have.** 598 catalogued, 583 drawn, **15 with no distance at all**
+and never drawn. The HUD said "events" and meant the catalogue size, which did not add up to anything
+else on screen. Now: `catalogued = drawn + unplaced`, and `drawn = measured + estimated`, both verified
+to close.
+
 
 ---
 
