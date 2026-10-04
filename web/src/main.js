@@ -8,6 +8,7 @@
 
 import { Raycaster, Vector2 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
+import { sampleIntegrity } from './core/integrity.js';
 import { identityAt, isClick, pickFromHits } from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
 import { createTierBudget } from './core/tier-budget.js';
@@ -250,6 +251,21 @@ async function start() {
   requestAnimationFrame(loop);
 }
 
+/**
+ * Does every light we are about to draw still name a catalogue row? Recomputed
+ * whenever the drawn set changes, and published so a failure is visible rather
+ * than silent.
+ */
+function checkIntegrity() {
+  const report = sampleIntegrity({
+    starIndex,
+    drawnPoints: atlas.stats.points,
+    originMetres: atlas.origin.originMetres,
+  });
+  atlas.stats.integrity = report;
+  return report;
+}
+
 /** Choose what to draw and rebuild the layers for the current origin. */
 function redraw() {
   const previousEpoch = lastOriginEpoch;
@@ -289,6 +305,7 @@ function redraw() {
     mediumScale = scale;
   }
   atlas.stats.drawCount = drawn;
+  checkIntegrity();
 }
 
 let nebulosity = null;

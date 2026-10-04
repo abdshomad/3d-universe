@@ -46,21 +46,36 @@ observation was read.
 
 ## E2 — Manifest integrity: every rendered light resolves to a catalog row
 
-**Why now.** This is Phase 1 exit criterion 2 and the project's central promise: *every rendered
-measured object resolves to a catalog row*. It has never been asserted anywhere. Prose about
-provenance is not a guarantee; a check is.
+**Why now.** Phase 1 exit criterion 2 is the project's central promise: *every rendered measured
+object resolves to a catalog row*. Half of it was already built and I did not know — `ingest verify`
+re-runs each tile's recorded query against the same service and matches rows by catalog id, which is
+stronger than anything this plan proposed. What was missing is the cheap half that can run on every
+commit, and the online half that checks what is actually drawn.
 
-**Scope.** Two assertions. Offline: for every baked tile, the manifest's `count` matches the tile
-header and the file's `sha256` matches the bytes on disk — so a stale manifest cannot ship. Online:
-every star currently drawn resolves, through `SearchIndex`, to an entry with a distance, a magnitude
-and a provenance string.
+**Scope.** Offline, fast and network-free: for every manifest entry, the file exists, its `sha256`
+and byte length match, and a `MEASURED` tile names a catalog and release to cite. Online: every star
+currently drawn resolves, with a finite distance and a provenance string citing that tile's own
+catalog — sampled across the drawn range rather than the tile's first rows.
 
 **Invariant that matters.** The check must run against the *rendered* set, not the tile's nominal
 count. A tile that claims 60,000 stars and yields 58,412 resolvable ones is exactly the failure
 worth catching.
 
-**Exit.** The integrity check runs in CI over the baked assets and reports zero unresolved stars at
-three scales (10 pc, 10 kpc, 1 Mpc). A deliberately corrupted tile fails it.
+**Exit.** Zero unresolved rows at three scales (10 pc, 10 kpc, 1 Mpc), and a stale manifest fails.
+
+**Status: done, 2026-10-04** — `ingest/manifest_check.py` (`python3 -m ingest.manifest_check`)
+runs in under a second: 2 tiles, 72,219 rows described truthfully, exit 0. Against a deliberately
+stale manifest in a scratch directory it reports the missing tile and the mismatched `sha256` and
+exits 1, with the real assets untouched. `web/src/core/integrity.js` runs the online half on every
+redraw and publishes `atlas.stats.integrity`. Verified live: 256 of 256 sampled rows resolve at
+10 pc (72,219 drawn) and at 10 kpc (6,918 drawn); at 1 Mpc nothing is drawn and nothing is
+claimed, which is a pass, not a silence. The offline catalog round-trip remains the exhaustive
+check; the runtime one is a 256-row sample across the drawn range and says so.
+
+**What this cost, honestly.** My first draft of the offline checker was a sha256 walk that
+duplicated what `ingest.verify` already does, and it overwrote that file. Two files in this project
+now have a verifier whose name I reached for without reading. The rule that follows: `find` before
+you `write`.
 
 ---
 
