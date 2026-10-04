@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Universe</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; }
+      #view { display: block; width: 100vw; height: 100vh; }
+      #readout {
+        position: fixed;
+        left: 12px;
+        bottom: 10px;
+        font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #8a8f98;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="readout">loading</div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../node_modules/three/build/three.webgpu.js",
+          "three/webgpu": "../node_modules/three/build/three.webgpu.js",
+          "three/tsl": "../node_modules/three/build/three.tsl.js"
+        }
+      }
+    </script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

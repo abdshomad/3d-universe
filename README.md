@@ -50,8 +50,20 @@ is the entire activation.
 
 ```bash
 npm install
-npm test        # node --test, 12 checks over the engine core
+npm test              # node --test: 33 checks over the engine, LOD and tile reader
+npm run bake          # fetch Gaia, quantize, write assets/tiles
+npm run serve         # http://127.0.0.1:$PORT/web/index.html  (port from .env)
+pm2 start ecosystem.config.cjs && pm2 save    # keep it running across reboots
 ```
+
+`.env` holds `PORT` and `HOST`. pm2 watches that one file, so changing the port restarts the
+service on the new address without touching anything else.
+
+- `web/src/data/tile-reader.js` — reads `U3DTILE2`; ids stay in a `BigUint64Array` because Gaia
+  ids reach 5.8e18 and a float64 would round them to a different star.
+- `web/src/render/star-layer.js` — additive points sized and brightened from magnitude. Uses a node
+  material: three's WebGPU renderer rejects `ShaderMaterial` outright.
+- `web/src/render/scene.js` — renderer, camera rig, floating origin, frame loop, fps meter.
 
 - `web/src/core/camera-rig.js` — exponential travel (distance interpolated geometrically, direction
   as unit vectors) and rotation at a scale-independent angular rate.

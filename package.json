@@ -6,7 +6,8 @@
   "description": "A real-time, provenance-honest 3D atlas of the observable universe",
   "scripts": {
     "test": "node --test web/test/",
-    "bake": "python3 -m ingest.cli bake --source gaia --limit 5000"
+    "bake": "python3 -m ingest.cli bake --source gaia --limit 5000",
+    "serve": "node scripts/serve.js"
   },
   "dependencies": {
     "three": "^0.186.0"

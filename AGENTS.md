@@ -56,3 +56,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   signs, so it culled tiles in plain view); the octree passed a `Box` where a depth was expected and
   recursed forever; and the culling pyramid was built at the camera's real position, where a
   1e20 m coordinate makes every direction give the same garbage planes.
+- 2026-10-04 — `n` #8 (sub-plan 02): the atlas draws. Tile reader, star layer and scene runner;
+  12,219 measured Gaia stars render in a headless browser at ~9-12 fps under software rendering,
+  WebGL2 fallback confirmed. Fixed along the way: three's WebGPU renderer rejects ShaderMaterial
+  (needs a node material), point size in world units vanishes at 1e12 m (screen-space now), and a
+  far plane taken from the camera's distance clips every star a parsec away. App is served by pm2
+  from `ecosystem.config.cjs`, port read from `.env`, which pm2 watches.

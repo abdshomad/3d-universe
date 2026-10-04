@@ -33,7 +33,10 @@ solve scale without the camera ever visibly snapping.
   covering the most sky. Brightness is physical: a star baked at magnitude G from Earth shows as
   G + 5·log₁₀(d/d₀) elsewhere. On the real baked tile: 3000 points at full brightness from the Sun,
   culled entirely from 50 kpc, and a 500-point budget honoured exactly.
-- [ ] `[TODO]` Instanced point rendering with additive blending; measure points/frame.
+- [x] Point rendering with additive blending, verified in a browser — `web/src/render/`:
+  12,219 Gaia stars drawn as screen-space points sized and brightened from magnitude. Measured
+  under SwiftShader software rendering at ~9–12 fps; that is a floor, not a GPU number. Points
+  rebased whenever the floating origin moves, and near/far bracket the visible content.
 - [ ] `[TODO]` Frame budget controller: LOD degrades before frame rate does.
 - [ ] `[TODO]` Post chain: bloom → ACES tonemap → vignette (floor `#05060A`, never crushed to
   `#000000`).
