@@ -157,3 +157,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   long-lived flight hint blocked the next useful thing for 24 seconds. The design bug was only
   visible by reading the browser timeline. Verified live: hints supersede each other, and the
   flight hint retires within a second of the viewer flying. 189/189 tests pass.
+- 2026-10-04 — `n` #29 (sub-plan 04): accessibility. Keyboard-only flight completed ('/' focuses
+  search, Escape dismisses hints), reduced motion stops both self-flying and drift, and the HUD
+  palette is now measured: --ink-dim was 3.30:1, below AA for the small labels that used it, and is
+  now 5.24:1. The browser caught that my first reduced-motion wiring honoured auto-play but not
+  drift - the scene applied it unconditionally. Drift now reads exactly 0 when motion is reduced.

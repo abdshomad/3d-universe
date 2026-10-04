@@ -34,6 +34,9 @@ export class AtlasScene {
     this.origin = new FloatingOrigin();
     this.layers = [];
     this.viewRange = null;
+    // Someone who asks for reduced motion gets no drift: it is motion, and it
+    // never stops on its own.
+    this.motion = { drift: true };
     this.stats = { fps: 0, points: 0, drawCount: 0, backend: 'unknown', frames: 0, near: 0, far: 0 };
     this._frames = 0;
     this.perf = new PerfRecorder();
@@ -107,7 +110,8 @@ export class AtlasScene {
   /** Advance the rig, resync, render a frame. `measured` is the real frame
    *  time when the caller clamps the step for simulation stability. */
   frame(deltaSeconds, measured = deltaSeconds) {
-    this.rig.autoDrift(0.004).update(deltaSeconds);
+    if (this.motion.drift) this.rig.autoDrift(0.004);
+    this.rig.update(deltaSeconds);
     this.syncCamera();
     this.post.render(this.renderer, this.scene, this.camera);
     this.perf.record(measured);

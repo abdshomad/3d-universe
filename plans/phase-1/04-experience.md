@@ -39,7 +39,12 @@ Depends on 03.
   saying. Verified in a browser: `hold W to fly out` (t≈4–13) → `type a name to fly somewhere`
   (t≈17–23) → `J guided journey · R scale out`; the flight hint is gone within a second of the
   viewer actually flying.
-- [ ] `[TODO]` Accessibility: keyboard-only flight, reduced-motion mode, readable contrast for type.
+- [x] Accessibility: `web/src/core/accessibility.js`. Keyboard-only flight is complete (`/`
+  focuses search, `Escape` dismisses hints, bindings described from one source);
+  `prefers-reduced-motion` stops both self-flying **and** drift; and contrast is measured rather than
+  eyeballed — `--ink-dim` was 3.30:1, below AA for the small labels using it, and is now `#7c828d` at
+  5.24:1. Verified in a browser with motion emulated: drift 0.00767 normally, exactly **0** under
+  reduced motion, with no console errors.
 - [ ] `[TODO]` Deep links: a URL restores position, orientation, scale, and selection.
 
 ## Acceptance

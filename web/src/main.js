@@ -29,12 +29,23 @@ import { journeyFromLandmarks } from './core/journey.js';
 import { SearchIndex, flightPathTo } from './core/search.js';
 import { epochSpan, formatYear } from './core/light-travel.js';
 import { Onboarding } from './core/onboarding.js';
+import { motionPolicy, prefersReducedMotion } from './core/accessibility.js';
 import { OPENING_STEPS } from './data/onboarding.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
+  if (key === '/' && document.activeElement !== document.getElementById('search')) {
+    event.preventDefault();
+    document.getElementById('search')?.focus();
+    return;
+  }
+  if (key === 'escape') {
+    guide.dismiss();
+    document.activeElement?.blur?.();
+    return;
+  }
   keys.add(key);
   if (key === 'j' && activeRoute !== journeyRoute) switchRoute(journeyRoute, 'guided journey');
   if (key === 'r' && activeRoute !== route) switchRoute(route, 'scale out');
@@ -131,6 +142,8 @@ async function start() {
   attachEpochScrubber();
   guide.start();
   atlas.guide = guide;
+  atlas.motion = motion;
+  if (!motion.autoPlayRoute) routeTime = 0;
 
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
@@ -180,9 +193,11 @@ async function start() {
     if (freeFlight) {
       atlas.rig.resetDrift();
       atlas.rig.positionMetres = flight.step(delta, atlas.rig.positionMetres);
+      if (motion.drift) atlas.rig.lookAtAngles(atlas.rig.baseYaw, atlas.rig.basePitch);
       atlas.stats.waypoint = 'free flight';
     } else {
-      routeTime += delta;
+      routeTime += motion.autoPlayRoute ? delta : 0;
+      atlas.stats.routeSeconds = routeTime;
       const shot = activeRoute.sample(routeTime);
       atlas.rig.positionMetres = shot.positionMetres;
       // The route says where to face: a deep field, or outward along the route.
@@ -454,6 +469,8 @@ function updateHud(now = performance.now()) {
 let cardSelection = null;
 let observerYear = new Date().getFullYear();
 const guide = new Onboarding(OPENING_STEPS, { now: () => performance.now() / 1000 });
+// Someone who asks for reduced motion gets a still sky: no self-flying, no drift.
+const motion = motionPolicy({ reduced: prefersReducedMotion() });
 
 /** The single hint line, when there is something worth saying. */
 function hintReadout() {
