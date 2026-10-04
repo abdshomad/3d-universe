@@ -1,10 +1,11 @@
-"""Bake: fetch a source, quantize it into a tile, write it to disk."""
+"""Bake: fetch a source, quantize it into a tile, and refresh the manifest."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 
+from ingest import manifest as manifest_module
 from ingest.schema import CatalogObject
 from ingest.sources import gaia, sbdb
 from ingest.tiles import Tile, build_tile, read_tile, write_tile
@@ -17,6 +18,7 @@ SBDB_TILE = "sbdb-small-bodies"
 @dataclass(frozen=True, slots=True)
 class BakeResult:
     path: Path
+    manifest_path: Path
     count: int
     tile: Tile
 
@@ -57,7 +59,13 @@ def bake_sbdb(
 def _write(records: list[CatalogObject], out_dir: str, tile_id: str) -> BakeResult:
     tile = build_tile(tile_id, records)
     path = write_tile(Path(out_dir) / f"{tile_id}.u3dtile", tile)
-    return BakeResult(path=path, count=len(tile), tile=read_tile(path))
+    manifest_path = manifest_module.write(out_dir)
+    return BakeResult(
+        path=path,
+        manifest_path=manifest_path,
+        count=len(tile),
+        tile=read_tile(path),
+    )
 
 
 def load(tile_id: str, out_dir: str = DEFAULT_DIR) -> Tile:

@@ -3,6 +3,8 @@
     python -m ingest.cli gaia --limit 200 --min-parallax 10
     python -m ingest.cli sbdb --limit 50
     python -m ingest.cli imagery --query "webb deep field" --out assets/imagery.json
+    python -m ingest.cli bake --source gaia --limit 5000
+    python -m ingest.cli manifest --dir assets/tiles
 """
 
 from __future__ import annotations
@@ -13,7 +15,8 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from ingest.bake import bake_gaia, bake_sbdb
+from ingest import manifest as manifest_module
+from ingest.bake import DEFAULT_DIR, bake_gaia, bake_sbdb
 from ingest.sources import gaia, imagery, sbdb
 
 
@@ -61,6 +64,36 @@ def _run_imagery(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_bake(args: argparse.Namespace) -> int:
+    if args.source == "gaia":
+        result = bake_gaia(
+            limit=args.limit,
+            min_parallax_mas=args.min_parallax,
+            out_dir=args.out_dir,
+            tile_id=args.tile_id,
+        )
+    else:
+        result = bake_sbdb(
+            limit=args.limit, out_dir=args.out_dir, tile_id=args.tile_id
+        )
+    print(result.summary())
+    print(f"manifest: {result.manifest_path}")
+    return 0
+
+
+def _run_manifest(args: argparse.Namespace) -> int:
+    path = manifest_module.write(args.dir)
+    index = manifest_module.load(args.dir)
+    print(f"{path} — {len(index.tiles)} tiles, generated {index.generated_at}")
+    for tile in index.tiles:
+        print(
+            f"  {tile.tile_id}: {tile.count} {tile.unit} "
+            f"[{tile.catalog} {tile.release}] {tile.bytes} B "
+            f"sha256={tile.sha256[:12]}"
+        )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ingest", description="Catalog ingestion")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -90,9 +123,13 @@ def build_parser() -> argparse.ArgumentParser:
     bake_parser.add_argument("--source", choices=["gaia", "sbdb"], default="gaia")
     bake_parser.add_argument("--limit", type=int, default=5000)
     bake_parser.add_argument("--min-parallax", type=float, default=10.0)
-    bake_parser.add_argument("--out-dir", default="assets/tiles")
+    bake_parser.add_argument("--out-dir", default=DEFAULT_DIR)
     bake_parser.add_argument("--tile-id", default=None)
     bake_parser.set_defaults(func=_run_bake)
+
+    manifest_parser = sub.add_parser("manifest", help="index a directory of tiles")
+    manifest_parser.add_argument("--dir", default=DEFAULT_DIR)
+    manifest_parser.set_defaults(func=_run_manifest)
 
     return parser
 
@@ -104,22 +141,6 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - CLI boundary
         print(f"ingest failed: {exc}", file=sys.stderr)
         return 1
-
-
-def _run_bake(args: argparse.Namespace) -> int:
-    if args.source == "gaia":
-        result = bake_gaia(
-            limit=args.limit,
-            min_parallax_mas=args.min_parallax,
-            out_dir=args.out_dir,
-            tile_id=args.tile_id,
-        )
-    else:
-        result = bake_sbdb(
-            limit=args.limit, out_dir=args.out_dir, tile_id=args.tile_id
-        )
-    print(result.summary())
-    return 0
 
 
 if __name__ == "__main__":

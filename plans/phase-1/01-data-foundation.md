@@ -36,7 +36,9 @@ the ingest package fails loudly on an empty result rather than returning nothing
 - [x] Tile writer: binary, quantized position/mag/color, in the tile's own unit (pc for stars, AU
   for small bodies) — `ingest/tiles.py`, 11.27 B/star, round-trip error 0.0004 pc across a 53 pc
   extent, exactly at the quantization bound.
-- [ ] `[TODO]` `manifest.json`: tile bounds, source catalog + release, row-id range, checksum.
+- [x] `manifest.json`: tile bounds, unit, catalog + release, flag, row-id range and SHA-256 per tile
+  — `ingest/manifest.py`. Checksums match `sha256sum` independently; a single flipped byte changes
+  the digest, so tampering is detectable.
 - [x] Bake T1 slice with counts verified against the archive's own COUNT: 1413 objects at parallax
   > 50 mas and 228 at > 100 mas — exact match.
 - [x] Bake T0 slice for the solar system + major small bodies — 200 asteroids at real positions in

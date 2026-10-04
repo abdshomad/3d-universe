@@ -29,6 +29,7 @@ python -m ingest.cli gaia --limit 50 --cone 101.28,-16.71,1.0  # a cone of sky
 python -m ingest.cli sbdb --limit 50 --kind a                  # asteroids, real orbits
 python -m ingest.cli imagery --out assets/imagery.json         # NASA deep-field imagery
 python -m ingest.cli bake --source gaia --limit 5000           # fetch -> quantize -> tile file
+python -m ingest.cli manifest --dir assets/tiles            # index tiles, with checksums
 ```
 
 Records carry `ra_deg`, `dec_deg`, `distance_pc`, `mag`, `color_index` and a provenance block naming

@@ -35,3 +35,6 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   the first small-body bake came out degenerate because parsec quantization collapsed the solar
   system into one point. Baked counts match the archive exactly: 1413 stars at parallax>50 mas,
   228 at >100 mas.
+- 2026-10-04 — `n` #3 (sub-plan 01): `ingest/manifest.py` + `manifest` CLI. Per-tile bounds, unit,
+  catalog/release, provenance flag, row-id range and SHA-256; digests verified against `sha256sum`
+  and a one-byte flip is detected.
