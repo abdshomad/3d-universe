@@ -1,0 +1,44 @@
+# Sub-plan 02 — Atlas Engine
+
+**Goal:** a renderer that spans 1 m → ~500 Mpc at 60 fps with hundreds of thousands of points.
+
+**Engine: three.js `WebGPURenderer`**, which falls back to WebGL 2 automatically on older hardware.
+Decided by grill, 2026-10-04. Sub-plans 03–05 talk to the interfaces below, never to the library.
+
+## The actual hard problem
+
+One float32 frame of reference cannot represent a solar-system planet and a galaxy. The engine must
+solve scale without the camera ever visibly snapping.
+
+## Interfaces (stable regardless of engine)
+
+- `CameraRig` — position in parsecs; exposes `travelTo(target, arc)`, `setScaleRange()`.
+- `SceneGraph` — nested scale cells, each with a local origin; only the active cell carries full
+  precision.
+- `Layer` — `load(tile)`, `update(camera, budget)`, `draw()`. Every visual element is a layer.
+- `LodTree` — octree over baked tiles, frustum + distance culling, budgeted per frame.
+- `DepthModel` — logarithmic depth so 1 m and 1 Gpc coexist in one depth buffer.
+
+## Tasks
+
+- [ ] `[TODO]` Camera rig with exponential travel and constant angular rate across scale changes.
+- [ ] `[TODO]` Nested scene graph + floating origin; no visible pop at cell transitions.
+- [ ] `[TODO]` Logarithmic depth buffer; verify against z-fighting at planetary scale.
+- [ ] `[TODO]` Octree LOD: build from tile bounds, cull by frustum and by apparent brightness.
+- [ ] `[TODO]` Instanced point rendering with additive blending; measure points/frame.
+- [ ] `[TODO]` Frame budget controller: LOD degrades before frame rate does.
+- [ ] `[TODO]` Post chain: bloom → ACES tonemap → vignette (floor `#05060A`, never crushed to
+  `#000000`).
+- [ ] `[TODO]` Deterministic camera path format so a cinematic route is data, not code.
+- [ ] `[TODO]` Performance harness: fixed route, per-frame timings, CI-checkable budget.
+
+## Acceptance
+
+- 100 000 real stars at 60 fps on a mid-range laptop GPU.
+- Continuous flight Earth orbit → 100 kpc with no stall and no visible precision pop.
+- Frame budget holds when LOD is throttled: dropping stars must be smooth, not stuttering.
+
+## Performance anchor
+
+SpaceEngine reports ~300 000 stars across ~100 VBOs as acceptable. Targets here are in that class,
+not in the billions; the billions arrive as LOD tiles, never as individual points.
