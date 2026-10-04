@@ -11,6 +11,19 @@ much they close the project's stated promises — not by how easy they are.
 **Why now.** PRD core feature 7 says *every selection shows a fact card*. Today a selection only
 exists after you type a name: search resolves a HIP, the route flies there, the card appears. A
 click — the most natural gesture in a 3D atlas — does nothing. I deferred this while building the
+cards, and it is now the largest gap between what the PRD promises and what the app does.
+
+**Scope.** A raycast against the star layers and the spark layers, resolving a hit to a catalog
+identity, setting the reticle, and routing the card. Hover is out of scope: click only, so the
+gesture is unambiguous while flight controls are live.
+
+**Invariant that matters.** A pick resolves through the same tile and star index the search box
+builds from, and produces the same identity shape. If a click can name a star the search box
+cannot, or the two disagree about its distance, they disagree about identity — which is precisely
+the bug class this project exists to prevent.
+
+**Exit.** A click names the star under the cursor, pins the reticle to it, and shows its card;
+where no star is drawn, nothing is claimed. Verified in the browser, both ways.
 
 **Status: done, 2026-10-04** — `web/src/core/picker.js` holds the decisions (click vs drag, which
 hit wins, what a hit *is*), and `main.js` owns only the raycast. The threshold is what four pixels
@@ -23,22 +36,11 @@ picks nothing. Ten tests cover the identity maths, including that a pick resolve
 distance the tile encodes and that an unsupported unit is refused rather than mis-scaled.
 
 **One bug this surfaced, worth keeping.** At 1 Mpc the LOD drops every star, and the card kept
-naming GAIA 3891136711141807232 at 85.944 pc — a star no longer on screen. `dropStaleSelection` now
-clears any star selection when the LOD drops the star set. A card asserting a measurement about
-something not drawn is precisely the failure this project exists to prevent, and nothing about it
-looked wrong until the screenshot was read.
-cards, and it is now the largest gap between what the PRD promises and what the app does.
-
-**Scope.** A raycast against the star layers and the spark layers, resolving a hit to a catalog
-identity, setting the reticle, and routing the card. Hover is out of scope: click only, so the
-gesture is unambiguous while flight controls are live.
-
-**Invariant that matters.** A pick resolves through the *same* `SearchIndex` the search box uses.
-If a click can name a star the search box cannot, or vice versa, the two disagree about identity —
-which is precisely the bug class this project exists to prevent.
-
-**Exit.** A click on a lit spark selects it, names it, and shows a card; a click on empty sky clears
-the selection. Verified in the browser, both ways.
+naming GAIA 3891136711141807232 at 85.944 pc — a star no longer on screen. `dropStaleSelection`
+now clears any star selection when the LOD drops the star set, so with 0 stars drawn the card
+claims nothing at all. A card asserting a measurement about something not drawn is precisely the
+failure this project exists to prevent, and nothing about that card looked wrong until the
+observation was read.
 
 ---
 
