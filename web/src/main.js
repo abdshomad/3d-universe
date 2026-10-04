@@ -10,12 +10,15 @@ import { FrameBudgetController } from './core/frame-budget.js';
 import { LodTree } from './core/lod-tree.js';
 import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
-import { centroid, createStarLayer } from './render/star-layer.js';
+import { createStarLayer } from './render/star-layer.js';
 import { AtlasScene } from './render/scene.js';
 import { formatScale } from './core/units.js';
+import { createScaleOutPath } from './routes/scale-out.js';
 
 const TILE_DIR = '../assets/tiles';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
+const route = createScaleOutPath();
+let routeTime = 0;
 
 const canvas = document.getElementById('view');
 const readout = document.getElementById('readout');
@@ -23,6 +26,7 @@ const readout = document.getElementById('readout');
 const atlas = new AtlasScene({ canvas, aspect: 1 });
 window.__atlas = atlas;
 atlas.budget = budget;
+atlas.route = route;
 
 let visible = [];
 let tiles = [];
@@ -54,12 +58,7 @@ async function start() {
     tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
   }
 
-  const aim = tiles.length > 0 ? centroid(tiles[0]) : { x: 0, y: 0, z: 0 };
-  atlas.rig.positionMetres = [0, 0, 0];
-  atlas.rig.travelTo(
-    [aim.x * 0.05, aim.y * 0.05, aim.z * 0.05],
-    { durationSeconds: 12, arc: 0.15 },
-  );
+  atlas.rig.positionMetres = route.sample(0).positionMetres;
   redraw();
 
   let previous = performance.now();
@@ -68,6 +67,13 @@ async function start() {
     // performance.now() taken just before it, so the first delta can be negative.
     const delta = Math.max(0, Math.min((now - previous) / 1000, 0.1));
     previous = now;
+    routeTime += delta;
+    const shot = route.sample(routeTime);
+    atlas.rig.positionMetres = shot.positionMetres;
+    // Look outward along the route: the camera faces the direction it travels.
+    atlas.rig.yaw = Math.atan2(shot.positionMetres[0], shot.positionMetres[2]);
+    atlas.stats.waypoint = shot.name;
+    atlas.stats.routeSeconds = routeTime;
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
     refreshViewRange();
     atlas.frame(delta);
@@ -135,7 +141,7 @@ function updateReadout() {
   const scale = formatScale(Math.hypot(...atlas.rig.positionMetres));
   if (readout) {
     readout.textContent = [
-      `${fps.toFixed(1)} fps · ${backend}`,
+      `${atlas.stats.waypoint ?? 'free flight'} · ${fps.toFixed(1)} fps · ${backend}`,
       `${points}/${budget.budgetPoints} points`,
       `view scale ${scale}`,
       `depth ${near.toExponential(1)}–${far.toExponential(1)} m`,

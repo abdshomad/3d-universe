@@ -70,3 +70,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   black by the colour round trip, so the floor is applied last, in display space. ACES was measured
   and rejected: the pass is already display-encoded, so it darkened every star instead of rolling
   highlights off.
+- 2026-10-04 — `n` #11 (sub-plan 02): cinematic routes as data (`camera-path.js`, `routes/scale-out.js`).
+  Also caught a silent one: the post chain's `vec4()` got an RGBA node, which the node builder
+  rejected, so the whole chain — including the void floor — was never applied. Painting the page red
+  proved it: with the chain on the void stays `#05060a`; with it off the red shows through.

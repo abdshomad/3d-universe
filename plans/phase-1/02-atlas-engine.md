@@ -45,7 +45,11 @@ solve scale without the camera ever visibly snapping.
   browser: bright cores 101 → 172 pixels, halo band 1666 → 2072, void median exactly `[5,6,10]` with
   the chain on and off. ACES was tried and removed: the scene pass is already display-encoded, so
   tone mapping darkened every star (92 bright pixels → 0). It returns when the scene carries HDR.
-- [ ] `[TODO]` Deterministic camera path format so a cinematic route is data, not code.
+- [x] Deterministic camera path as data — `web/src/core/camera-path.js` and
+  `web/src/routes/scale-out.js`. Waypoints are radii, bearings and holds; the same moment always
+  yields the same position, independent of frame rate. Verified in a browser: the route runs sol →
+  nearby-stars → neighbourhood → open-cluster-scale → kpc with radius growing monotonically and the
+  waypoint name live in the HUD.
 - [ ] `[TODO]` Performance harness: fixed route, per-frame timings, CI-checkable budget.
 
 ## Acceptance

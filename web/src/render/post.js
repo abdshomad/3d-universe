@@ -5,18 +5,18 @@
  * frames bleed, and a hard dot never does. The threshold is deliberately low so
  * faint stars glow too — the medium is supposed to look luminous.
  *
- * Two findings shaped this file, both measured in a browser rather than assumed:
+ * Three findings shaped this file, all measured in a browser rather than
+ * assumed:
  *
- * - The scene pass already carries display-encoded colour. Adding ACES and an
- *   sRGB encode on top of it darkens every star twice: 92 bright pixels dropped
- *   to 0 while the frame got dimmer, not richer.
  * - A void set as a scene background colour is crushed to `#000000` by the
- *   colour round trip. So the floor is applied last, in the same space the
- *   pixels are displayed in, and it is the only thing standing between the
- *   atlas and a black rectangle.
- *
- * Tone mapping returns when the scene carries HDR content — nebulae, ribbons,
- * simulated fill — where highlights need rolling off rather than clipping.
+ *   colour round trip. So the floor is applied last, in display space.
+ * - The scene pass already carries display-encoded colour. Adding ACES and an
+ *   sRGB encode on top darkened every star twice: 92 bright pixels fell to 0
+ *   while the frame got dimmer instead of richer. Tone mapping returns when the
+ *   scene carries HDR content, where highlights need rolling off.
+ * - The pass node is **RGBA**. `vec4(max(vec4, vec3), 1)` is five components;
+ *   the node builder rejects it and the entire chain silently disappears,
+ *   including the floor. Take the colour channels and keep the alpha.
  */
 
 import { PostProcessing } from 'three';
@@ -42,10 +42,11 @@ export class PostChain {
   constructor({ renderer, scene, camera, bloom: settings = DEFAULT_BLOOM }) {
     const colour = pass(scene, camera).getTextureNode();
     this.bloomNode = bloom(colour, settings.strength, settings.radius, settings.threshold);
+    const lit = colour.add(this.bloomNode);
 
     this.post = new PostProcessing(renderer);
     this.post.outputColorTransform = false;
-    this.post.outputNode = vec4(max(colour.add(this.bloomNode), VOID_DISPLAY), 1);
+    this.post.outputNode = vec4(max(lit.rgb, VOID_DISPLAY), lit.a);
     this.settings = settings;
     this.enabled = true;
   }
