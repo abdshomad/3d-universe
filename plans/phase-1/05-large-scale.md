@@ -51,7 +51,14 @@ tier says exactly that: it is a model of large-scale structure, not a survey map
   without a click, because when nothing else is selected and the tier is on screen the tier *is*
   what you are looking at. Verified live at 200 Mpc (49,410 cells) and 5000 Mpc (6,163) — the card
   reports the level actually drawn.
-- [ ] `[TODO]` Frame-budget check: the 500 Mpc tier must not push the star zone below its budget.
+- [x] Frame-budget check — measured, not assumed. The star zone and the tier **never overlap**:
+  stars count 72,219 at 10 pc and 6,918 at 10 kpc, but **0** from 0.5 Mpc out, while the tier only
+  fades in past 1 Mpc. So the tier cannot push the star zone below budget — measured 60.0 fps with
+  it drawn and 60.0 fps with it hidden, a 0.01 ms difference. Cold cost is 0.1 ms to parse 884,736
+  bytes and 25.8 ms to build both levels. `web/src/core/tier-budget.js` holds the line at runtime:
+  a rolling mean over 60 frames, warmup ignored, deferring the tier when the mean exceeds the budget
+  and restoring it when there is headroom. Verified live — tightening the budget to 8 ms hides the
+  tier and drops the badge to `UNRESOLVED`; restoring 20 ms brings both back.
 
 ## Acceptance
 
