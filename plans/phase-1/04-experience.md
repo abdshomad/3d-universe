@@ -45,7 +45,12 @@ Depends on 03.
   eyeballed — `--ink-dim` was 3.30:1, below AA for the small labels using it, and is now `#7c828d` at
   5.24:1. Verified in a browser with motion emulated: drift 0.00767 normally, exactly **0** under
   reduced motion, with no console errors.
-- [ ] `[TODO]` Deep links: a URL restores position, orientation, scale, and selection.
+- [x] Deep links: `web/src/core/deep-link.js`. The URL carries position, orientation, observer
+  epoch and selection; a shared view also takes the camera off the route's opening shot. Verified in
+  the browser: `#p=2.6370,0.0000,0.0000&y=90.00&t=-8.00&e=4026&s=hip:32349` restores 2.637 pc, 90°,
+  −8°, Sirius selected. A hostile fragment — `#p=NaN,banana&y=;DROP` — is ignored rather than flown
+  to. Three bugs the browser caught: the route clobbered the restored position, the link spoke
+  degrees while the rig speaks radians, and the selection id was written as a truncated number.
 
 ## Acceptance
 

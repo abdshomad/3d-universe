@@ -162,3 +162,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   palette is now measured: --ink-dim was 3.30:1, below AA for the small labels that used it, and is
   now 5.24:1. The browser caught that my first reduced-motion wiring honoured auto-play but not
   drift - the scene applied it unconditionally. Drift now reads exactly 0 when motion is reduced.
+- 2026-10-04 — `n` #30 (sub-plan 04, final): deep links. The URL carries position, orientation,
+  observer epoch and selection, and a shared view takes the camera off the route's opening shot. A
+  hostile fragment is ignored, not flown to. The browser caught three wiring bugs the unit tests
+  could not: the route overwrote the restored position, the link spoke degrees while the rig speaks
+  radians, and the selection id was serialised as a truncated number. 205/205 tests pass.

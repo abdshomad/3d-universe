@@ -30,6 +30,7 @@ import { SearchIndex, flightPathTo } from './core/search.js';
 import { epochSpan, formatYear } from './core/light-travel.js';
 import { Onboarding } from './core/onboarding.js';
 import { motionPolicy, prefersReducedMotion } from './core/accessibility.js';
+import { decodeView, encodeView, makeView } from './core/deep-link.js';
 import { OPENING_STEPS } from './data/onboarding.js';
 const flight = new FlightController();
 const keys = new Set();
@@ -170,6 +171,7 @@ async function start() {
   starIndex.tile = biggest;
 
   atlas.rig.positionMetres = route.sample(0).positionMetres;
+  applySharedView(sharedView);
   redraw();
 
   let previous = performance.now();
@@ -214,6 +216,7 @@ async function start() {
     updateHud();
     epochReadout();
     hintReadout();
+    shareView();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -471,6 +474,46 @@ let observerYear = new Date().getFullYear();
 const guide = new Onboarding(OPENING_STEPS, { now: () => performance.now() / 1000 });
 // Someone who asks for reduced motion gets a still sky: no self-flying, no drift.
 const motion = motionPolicy({ reduced: prefersReducedMotion() });
+const sharedView = decodeView(globalThis.location?.hash ?? '');
+let lastSharedHash = '';
+
+/** Restore a view someone shared: where, facing what, when, and what is selected. */
+function applySharedView(view) {
+  if (!view) return false;
+  atlas.rig.resetDrift();
+  atlas.rig.positionMetres = view.positionMetres;
+  // The link speaks degrees, the rig speaks radians.
+  atlas.rig.lookAtAngles((view.yaw * Math.PI) / 180, (view.pitch * Math.PI) / 180);
+  if (view.observerYear !== null) {
+    observerYear = view.observerYear;
+    const slider = document.getElementById('epoch');
+    if (slider) slider.value = String(observerYear - new Date().getFullYear());
+  }
+  if (view.selectionId) {
+    const wanted = String(view.selectionId);
+    const byId = searchIndex?.entries.find((entry) => String(entry.id) === wanted);
+    if (byId) cardSelection = { ...byId, kind: 'landmark' };
+  }
+  // A shared view is somebody's chosen vantage, not the route's opening shot.
+  freeFlight = true;
+  guide.record('selected');
+  return true;
+}
+
+/** Publish the current view in the URL, quietly. */
+function shareView() {
+  if (!freeFlight) return;
+  const hash = encodeView(makeView({
+    positionMetres: atlas.rig.positionMetres,
+    yaw: (atlas.rig.yaw * 180) / Math.PI,
+    pitch: (atlas.rig.pitch * 180) / Math.PI,
+    observerYear,
+    selectionId: cardSelection?.id ?? (selection?.id ? String(selection.id) : null),
+  }));
+  if (hash === lastSharedHash) return;
+  lastSharedHash = hash;
+  globalThis.history?.replaceState?.(null, '', hash);
+}
 
 /** The single hint line, when there is something worth saying. */
 function hintReadout() {
