@@ -10,6 +10,7 @@ import { Raycaster, Vector2 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
 import { attachPlanets, planetRows } from './data/exoplanets.js';
+import { figureCitation, figureStarPositions } from './data/figure-stars.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { Cinematic } from './core/cinematic.js';
 import { identityAt, isClick, pickFromHits } from './core/picker.js';
@@ -81,6 +82,7 @@ const TILE_DIR = '../assets/tiles';
 let reticle = null;
 let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
+const FIGURE_STAR_DIR = '../assets/relations/figure-stars.json';
 const EXOPLANET_DIR = '../assets/relations/exoplanets.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
@@ -213,6 +215,13 @@ async function start() {
   }
   await loadLssField();
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
+  const figurePayload = await loadJson(FIGURE_STAR_DIR).catch(() => null);
+  if (figurePayload) {
+    // Figure endpoints resolve against measured Hipparcos rows, not against
+    // whatever star in the neighbourhood tile happens to be nearby.
+    figureStarIndex = new StarIndex(figureStarPositions(figurePayload));
+    figureStarPayload = figurePayload;
+  }
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);
 
   const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
@@ -383,6 +392,8 @@ let nebulosity = null;
 let dustLayers = [];
 let mediumScale = 0;
 let relationPayload = null;
+let figureStarIndex = null;
+let figureStarPayload = null;
 /**
  * The cinematic path, read off the route we already fly: each waypoint as it is
  * first reached, with a hold so the eye can catch up with the scale.
@@ -687,8 +698,8 @@ function rebuildRibbons(scale) {
   if (!relationPayload || !starIndex) return;
   const { meshes, report } = buildRelationRibbons({
     relations: relationPayload.relations,
-    citation: relationPayload.citation,
-    index: starIndex,
+    citation: figureCitation(figureStarPayload) ?? relationPayload.citation,
+    index: figureStarIndex ?? starIndex,
     widthMetres: scale * 0.004,
     originMetres: atlas.origin.originMetres,
     maxRibbons: 400,

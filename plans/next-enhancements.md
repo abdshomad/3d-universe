@@ -28,9 +28,11 @@ Measured today: the NASA/ESA **VizieR** mirror of Hipparcos answers in **1.7 sec
 | **10″** | **874 (98%)** |
 | 30″ | 889 (100%) |
 
-Median separation **0.58″**. The figure points *are* catalogue stars — E4's looseness was never a
-property of the figures, only of the nearest-star lookup we had. 6,421 of those stars sit inside the
-200 pc the atlas already renders, so the recovered layer is inside the scale the camera reaches.
+**What that cost, at the time.** The layer covered a third of its segments instead of most of them,
+and the report said so rather than hiding it. That was the honest price *of the lookup we had* — and it
+was wrong to record it as a property of the figures. [E7](#e7--figure-stars-from-hipparcos-so-the-figures-are-drawn-between-named-stars)
+found the catalogue and recovered **149 of 150** segments at a worst match of 32.5″. The lesson is
+not "be honest about loss"; it is "check whether the loss is real before writing it down as truth".
 
 **Scope.** Ingest the naked-eye Hipparcos set as its own provenance-carrying tile. Match each figure
 vertex to its star one-to-one, carry the measured parallax, and let the relation layer resolve
@@ -43,6 +45,28 @@ restoring it quietly would undo the whole point.
 
 **Exit.** Every drawn endpoint names a Hipparcos star, and the segment count rises well past 50 with
 the match quality reported per segment.
+
+**Status: done, 2026-10-05** — `ingest/sources/hipparcos.py` fetches the set in **1.7 seconds** and
+bakes **8,726 stars** (63 dropped for want of a parallax: an endpoint with no distance would be
+placed somewhere invented). `web/src/data/figure-stars.js` turns them into world positions and the
+relation layer resolves endpoints against them.
+
+Verified live, same view, before and after:
+
+| | E4, against the neighbourhood tile | E7, against Hipparcos |
+| |---|---|
+| segments drawn | 50 of 150 | **149 of 150** |
+| dropped as too loose | 27 | **0** |
+| worst match kept | 536″ | **32.5″** |
+| stars indexed | 60,000 | 8,726 |
+
+Three times the segments, sixteen times better matched, and the 10′ ceiling E4 introduced never once
+binds. It is still there, which is the point: it is a guard, not a limit.
+
+**This corrects what E4 recorded.** E4 wrote that covering a third of the segments was "the honest
+price". It was the honest price *of the lookup we had*, and I presented a property of our index as a
+property of the sky. The figure points were catalogue rows all along — median 0.58″ from a Hipparcos
+star. The fix was never to accept the loss; it was to go and find out whether the loss was real.
 
 ---
 
