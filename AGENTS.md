@@ -96,3 +96,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   backwards exposed a real waste bug: the whole medium was being re-quantized every time the frame
   budget ticked, several times a second under load. It now rebuilds only when the origin moves or
   the view scale doubles. 99/99 tests pass.
+- 2026-10-04 — `n` #16 (sub-plan 03): measured objects. The renderer had its own copy of the
+  photometry and the claim "the tile and the screen agree" lived in a comment. Now the JS is a
+  verified mirror of the Python: the test spawns python3 and compares magnitude to flux, size,
+  B-V to temperature and RGB at 1e-6. 107/107 tests pass.

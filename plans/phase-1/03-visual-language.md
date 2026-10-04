@@ -22,7 +22,11 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   a near layer of soft sprites (28%), both additive and seeded so the sky is identical everywhere.
   Flagged `UNRESOLVED`: dust stands for what the catalogue did not resolve, and is never presented
   as measurement. Isolated in a browser: 1,015,952 lit pixels with the dust, 43,596 without.
-- [ ] `[TODO]` **Measured objects**: additive sprites, magnitude → brightness, B−V → RGB.
+- [x] **Measured objects**: `web/src/core/photometry.js` is now the single renderer-side
+  implementation of magnitude → size and brightness, B−V → RGB, mirrored from
+  `ingest/astro/photometry.py` and **verified against it** — the test runs the Python and compares to
+  1e-6, so the tile and the screen cannot drift apart. Verified in a browser: 4,843 strided stars,
+  112,791 lit pixels, flagged `MEASURED`.
 - [ ] `[TODO]` **Relations**: tapered Bézier ribbons, noise-modulated alpha, hue per relation type.
 - [ ] `[TODO]` **Reticles**: screen-space-width wireframe circles, tick arcs, crosshair, uncertainty
   ellipse around the selected object.

@@ -1,34 +1,15 @@
 /**
  * Measured stars as additive points of light.
  *
- * Size and brightness come from apparent magnitude, colour from the baked B-V,
- * exactly as `ingest/astro/photometry.py` does, so the tile and the screen agree.
- * The point primitive itself — node material, additive, screen-space size — lives
- * in `point-layer.js`, shared with the nebulosity.
+ * The photometry lives in `core/photometry.js`, which is a verified mirror of
+ * `ingest/astro/photometry.py`: magnitude to size and brightness, B-V to RGB.
+ * This module turns a tile into geometry and hands it to the shared point
+ * primitive in `point-layer.js`.
  */
 
 import { colourAt, decodeAllPositions, magnitudeAt } from '../data/tile-reader.js';
+import { brightness, spriteScale } from '../core/photometry.js';
 import { createAdditivePoints } from './point-layer.js';
-
-const EXPOSURE = 8000; // a magnitude-12 star must read as a faint dot, not black
-const FAINT_MAGNITUDE = 12;
-const BRIGHT_MAGNITUDE = 0;
-const MIN_PIXELS = 1.2;
-const MAX_PIXELS = 9;
-
-/** Apparent magnitude to a point size in pixels. */
-export function spriteScale(magnitude) {
-  if (magnitude === null || Number.isNaN(magnitude)) return MIN_PIXELS;
-  const span = Math.max(FAINT_MAGNITUDE - BRIGHT_MAGNITUDE, 1e-6);
-  const t = Math.min(Math.max((FAINT_MAGNITUDE - magnitude) / span, 0), 1);
-  return MIN_PIXELS + (MAX_PIXELS - MIN_PIXELS) * Math.sqrt(t);
-}
-
-/** Apparent magnitude to a linear brightness multiplier. */
-export function brightness(magnitude) {
-  if (magnitude === null || Number.isNaN(magnitude)) return 0.5 * EXPOSURE;
-  return Math.min(Math.pow(10, -0.4 * (magnitude - BRIGHT_MAGNITUDE)) * EXPOSURE, 40);
-}
 
 /**
  * Build a points object for one tile.
@@ -75,6 +56,7 @@ export function createStarLayer(tile, {
     name: `stars:${tile.header.tile_id}`,
   });
   points.userData.tileId = tile.header.tile_id;
+  points.userData.provenance = 'MEASURED';
   return points;
 }
 
