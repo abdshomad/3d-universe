@@ -68,7 +68,8 @@ one side only is not a double star in this atlas and is not drawn.
 draw the separation arc where one component is known, and that arc is the strongest-looking thing on
 the layer while being the least supported.
 
-**Exit.** Every drawn pair has both components resolving to catalogue rows, with its separation and
+**Exit.** Every pair kept has both components resolving to catalogue rows, with its separation and
+catalogue identifier reported, and the count of omitted pairs stated rather than hidden.
 
 **Status: done, 2026-10-05, with no edges drawn — deliberately** —
 `ingest/sources/doubles.py` takes the naked-eye WDS catalogue, derives each secondary's position from
@@ -97,7 +98,6 @@ companion, the separation in arcseconds, and the WDS number.
 
 The matcher is also indexed by sky cell. Comparing every candidate against every star is 523 million
 comparisons in pure Python, which timed out at 280 seconds; bucketed, the same ingest takes 5.4 s.
-catalogue identifier reported, and the count of omitted pairs stated rather than hidden.
 
 ---
 
