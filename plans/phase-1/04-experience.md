@@ -13,9 +13,15 @@ Depends on 03.
   elevation, leaving the radius alone. Verified in a browser: W grows the distance, the waypoint
   reads `free flight` as the route pauses, and Shift boosts ~10×; the advertised gain (1.419/s) is
   the gain you actually get.
-- [ ] `[TODO]` Guided journeys: scripted cinematic routes (Sol → nearest star → galactic center →
-  Local Group) authored as data, with an optional auto-fly mode.
-- [ ] `[TODO]` Search: name lookup against the baked index, with a flight path to the result.
+- [x] Guided journeys: `web/src/core/journey.js` builds a route from landmarks with measured
+  distances — legs, holds, and a gaze that faces the next destination. Press `J` for the journey,
+  `R` for the scale-out route. Verified in a browser: the flight runs 0 → 0.053 → 1.347 pc, arriving
+  exactly on Alpha Centauri A's Hipparcos distance.
+- [x] Search: name or HIP number in, flight path out — `web/src/core/search.js` plus a single HUD
+  field. Matching is deliberately narrow: a proper name or a catalogue number, nothing looser.
+  Verified in a browser: "sirius" → route `flight to Sirius`, result line
+  `Sirius · 2.637 pc · HIP 32349`, and the flight ends at 2.6371 pc — the measured distance.
+  An unknown name answers "nothing found" rather than inventing a star.
 - [ ] `[TODO]` Fact card content per object kind: star, planet, galaxy, nebula, event.
 - [ ] `[TODO]` Light-travel-time scrubber: move the observer through epochs and watch the sky change.
 - [ ] `[TODO]` Onboarding: a 30-second opening that teaches flight without a tutorial wall.
