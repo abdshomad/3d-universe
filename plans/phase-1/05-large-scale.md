@@ -38,10 +38,13 @@ tier says exactly that: it is a model of large-scale structure, not a survey map
   on top to fake structure. Cells outside the declared radius are skipped: the tier is a ball, not the
   cube it is stored in. 49,410 points at the default threshold, flagged `SIMULATED`, and `parseField`
   **refuses** a cube that is not flagged simulated.
-- [ ] `[TODO]` Radial LOD: the tier loads coarse-first and refines only where the camera is close
-  in *angular* terms, so a distant view costs one tile.
-- [ ] `[TODO]` Seam continuity: cross-fade from the measured-star zone into the statistical zone
-  with no visible ring, seam, or density pop. Same additive language, same tonemap.
+- [x] Radial LOD — `levelForView` switches on the *angular* size of a cell, not a magic distance:
+  fine (49,410 points) while a cell is worth resolving, coarse (6,163, one cell in eight) once it
+  is a speck. Verified live: fine at 2 and 200 Mpc, coarse at 5000 Mpc.
+- [x] Seam continuity — `fadeForView` smoothsteps opacity over 1–8 Mpc, so the measured-star zone
+  hands over to modelled structure with no ring and no density pop. Verified live: invisible at
+  0.2 Mpc (badge `UNRESOLVED`), 5.5 % opacity at 2 Mpc, full by 20 Mpc, badge `SIMULATED`. Same
+  additive language and same tonemap throughout — the fade moves opacity, never the density.
 - [ ] `[TODO]` `SIMULATED` badge and a fact card saying what the tier is and is not: a model of
   structure, not a survey map.
 - [ ] `[TODO]` Frame-budget check: the 500 Mpc tier must not push the star zone below its budget.

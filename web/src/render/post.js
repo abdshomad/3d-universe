@@ -19,7 +19,7 @@
  *   including the floor. Take the colour channels and keep the alpha.
  */
 
-import { PostProcessing } from 'three/webgpu';
+import { RenderPipeline } from 'three/webgpu';
 import { max, pass, vec3, vec4 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
@@ -44,7 +44,7 @@ export class PostChain {
     this.bloomNode = bloom(colour, settings.strength, settings.radius, settings.threshold);
     const lit = colour.add(this.bloomNode);
 
-    this.post = new PostProcessing(renderer);
+    this.post = new RenderPipeline(renderer);
     this.post.outputColorTransform = false;
     this.post.outputNode = vec4(max(lit.rgb, VOID_DISPLAY), lit.a);
     this.settings = settings;

@@ -8,6 +8,9 @@ import test from 'node:test';
 import {
   DEFAULT_THRESHOLD,
   MPC_METRES,
+  angularCellSize,
+  fadeForView,
+  levelForView,
   cellBrightness,
   cellPosition,
   createLssLayer,
@@ -91,4 +94,36 @@ test('the cell budget is honoured', () => {
   const field = parseField(header(), cube(ramp()));
   const layer = createLssLayer(field, { threshold: 0, maxCells: 25 });
   assert.ok(layer.userData.pointCount <= 25);
+});
+
+test('a coarse level keeps one cell in eight', () => {
+  const field = parseField(header(), cube(ramp()));
+  const fine = createLssLayer(field, { threshold: 0, stride: 1, maxCells: 100000 });
+  const coarse = createLssLayer(field, { threshold: 0, stride: 2, maxCells: 100000 });
+  const ratio = fine.userData.pointCount / coarse.userData.pointCount;
+  assert.ok(ratio > 6 && ratio < 9, `expected about 8x, got ${ratio.toFixed(2)}x`);
+});
+
+test('level follows how large a cell looks, not a magic distance', () => {
+  const field = parseField(header(), cube(ramp()));
+  field.cellMpc = 10; // survey-scale cells; the fixture's 4-cell grid is coarse
+  assert.equal(levelForView(field, 2 * MPC_METRES), 1, 'a nearby cell earns the fine level');
+  assert.equal(levelForView(field, 5000 * MPC_METRES), 2, 'a distant cell earns the coarse one');
+  assert.ok(angularCellSize(field, 2 * MPC_METRES) > angularCellSize(field, 5000 * MPC_METRES));
+});
+
+test('the seam fades rather than switches', () => {
+  assert.equal(fadeForView(0.5 * MPC_METRES), 0, 'hidden inside the measured zone');
+  assert.equal(fadeForView(50 * MPC_METRES), 1, 'fully present well outside it');
+  const mid = fadeForView(4.5 * MPC_METRES);
+  assert.ok(mid > 0 && mid < 1, `mid-band should be partial, got ${mid}`);
+  const earlier = fadeForView(2 * MPC_METRES);
+  assert.ok(earlier < mid, 'and it must rise with distance');
+});
+
+test('opacity reaches the material', () => {
+  const field = parseField(header(), cube(ramp()));
+  const layer = createLssLayer(field, { threshold: 40, opacity: 0.42 });
+  assert.equal(layer.material.opacity, 0.42);
+  assert.equal(layer.userData.opacity, 0.42);
 });

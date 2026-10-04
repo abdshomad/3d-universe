@@ -167,6 +167,12 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   hostile fragment is ignored, not flown to. The browser caught three wiring bugs the unit tests
   could not: the route overwrote the restored position, the link spoke degrees while the rig speaks
   radians, and the selection id was serialised as a truncated number. 205/205 tests pass.
+- 2026-10-04 — `n` #33 (sub-plan 05): radial LOD and seam continuity. The level switches on the
+  angular size of a cell rather than a distance, and the seam smoothsteps opacity over
+  1-8 Mpc. Verified live: fine at 2 and 200 Mpc, coarse at 5000 Mpc, hidden at 0.2 Mpc.
+  217/217 node tests pass. Two defects found on the way: a stale `lssLayer` reference killed
+  the frame loop, and three r186 renamed `PostProcessing` to `RenderPipeline`. The level rule
+  was also inverted - fine detail belongs where a cell is *large* on screen, not small.
 - 2026-10-04 — `n` #32 (sub-plan 05): the modelled large-scale field. A Gaussian random field with a ΛCDM-like power spectrum, 96³ over 500 Mpc, generated in 1.7 s and identical for a given seed; rendered as one additive point per occupied cell with brightness ∝ density². Verified live at 5 Mpc out: field extent 500 Mpc, 49,410 points, badge reads SIMULATED. parseField refuses any cube not flagged simulated. Caught a unit error - 1 Mpc was 3.086e19 m instead of 3.086e22, drawing the tier a thousand times too close.
 - 2026-10-04 — `n` #31 (sub-plan 05): DESI probe. The public path is reachable and documented
   (CC BY 4.0, citation arXiv:2503.14745), but one region is 16.25 GB (ELG) and 5.48 GB (LRG) and

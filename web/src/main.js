@@ -18,7 +18,12 @@ import { Backdrop } from './render/backdrop.js';
 import { anglesFromDirection, directionFromAngles } from './core/view.js';
 import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
-import { createLssLayer, parseField } from './render/lss-layer.js';
+import {
+  createLssLayer,
+  fadeForView,
+  levelForView,
+  parseField,
+} from './render/lss-layer.js';
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
 import { createSparkLayers } from './render/sparks.js';
@@ -164,7 +169,7 @@ async function start() {
     atlas.search = searchIndex;
     attachSearchBox();
   }
-  lssLayer = await loadLssField();
+  await loadLssField();
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);
 
@@ -411,25 +416,44 @@ async function loadLssField() {
         return response.arrayBuffer();
       }),
     ]);
-    const layer = createLssLayer(parseField(header, cube), {
-      originMetres: atlas.origin.originMetres,
+    const field = parseField(header, cube);
+    lssField = field;
+    lssLevels = [1, 2].map((stride) => {
+      const layer = createLssLayer(field, {
+        stride,
+        originMetres: atlas.origin.originMetres,
+      });
+      layer.visible = false;
+      atlas.scene.add(layer);
+      return layer;
     });
-    layer.visible = false;
-    atlas.scene.add(layer);
-    atlas.lss = layer;
-    return layer;
+    atlas.lss = { field, levels: lssLevels };
+    return lssLevels;
   } catch (error) {
     window.__atlasFieldError = error.message;
     return null;
   }
 }
 
-/** The tier appears once the camera is far enough out for it to mean anything. */
+/**
+ * Coarse-first, refining only when a cell is big enough on screen to earn the
+ * detail, and fading in across the seam so crossing it cannot pop.
+ */
 function updateLssVisibility() {
-  if (!lssLayer) return;
+  if (!lssField || lssLevels.length === 0) return;
   const radius = Math.hypot(...atlas.rig.positionMetres);
-  lssLayer.visible = radius > LSS_VISIBLE_BEYOND_METRES;
-  atlas.stats.lssVisible = lssLayer.visible;
+  const fade = fadeForView(radius, { fadeEndMpc: LSS_FADE_END_MPC });
+  const level = levelForView(lssField, Math.max(radius, 1));
+
+  for (const [index, layer] of lssLevels.entries()) {
+    const stride = index + 1;
+    layer.visible = fade > 0 && stride === level;
+    layer.material.opacity = fade;
+  }
+  lssLevel = level;
+  atlas.stats.lssVisible = fade > 0;
+  atlas.stats.lssLevel = level;
+  atlas.stats.lssFade = Number(fade.toFixed(3));
 }
 
 function rebuildRibbons(scale) {
@@ -504,8 +528,10 @@ function updateHud(now = performance.now()) {
 }
 
 let cardSelection = null;
-let lssLayer = null;
-const LSS_VISIBLE_BEYOND_METRES = 3.0856775814913673e21; // 1 Mpc: past the Local Group
+let lssField = null;
+let lssLevels = [];
+let lssLevel = 2;
+const LSS_FADE_END_MPC = 8;
 let observerYear = new Date().getFullYear();
 const guide = new Onboarding(OPENING_STEPS, { now: () => performance.now() / 1000 });
 // Someone who asks for reduced motion gets a still sky: no self-flying, no drift.
@@ -602,7 +628,7 @@ function hudFlags() {
   if (atlas.layers.length > 0) flags.MEASURED = true;
   if (sparkLayers.length > 0) flags.MEASURED = true;
   if (dustLayers.length > 0) flags.UNRESOLVED = true;
-  if (lssLayer?.visible) flags.SIMULATED = true;
+  if (atlas.stats.lssVisible) flags.SIMULATED = true;
   return flags;
 }
 
