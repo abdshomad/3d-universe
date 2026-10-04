@@ -133,3 +133,17 @@ export function nearestCellOnScreen(projected, clickNdc, { width, height, maxPix
   if (best < 0 || bestPixels > maxPixels) return null;
   return { index: best, pixels: bestPixels };
 }
+
+/**
+ * What a clicked spark is: the catalogue row behind the glyph.
+ *
+ * Refuses an uncited event. A pulsar's period is a timing solution and a burst's
+ * flux is a single-epoch measurement; the card has to be able to say which, and
+ * it cannot do that without a source to attribute the number to.
+ */
+export function eventIdentity({ event, citation }) {
+  if (!event?.kind || event.id === undefined) return null;
+  const source = event.citation ?? citation;
+  if (!source) return null;
+  return { ...event, id: String(event.id), citation: source };
+}

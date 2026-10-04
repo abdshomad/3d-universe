@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   cellIdentity,
+  eventIdentity,
   identityAt,
   isClick,
   nearestCellOnScreen,
@@ -165,4 +166,25 @@ test('cells behind the camera are not pickable', () => {
 
 test('an empty layer picks nothing rather than throwing', () => {
   assert.equal(nearestCellOnScreen(new Float64Array(0), { x: 0, y: 0 }, { width: 800, height: 600 }), null);
+});
+
+/**
+ * A spark is a glyph drawn around a catalogue row. A pick has to find the row.
+ */
+test('an uncited event is not a selection', () => {
+  assert.equal(eventIdentity({ event: { id: 'PSR', kind: 'pulsar' } }), null,
+    'a number with no source is not a card');
+  assert.equal(eventIdentity({ event: null }), null);
+  assert.equal(eventIdentity({ event: { kind: 'pulsar' } }), null, 'no id, no identity');
+});
+
+test('a cited event selects, with its id as a string', () => {
+  const selected = eventIdentity({
+    event: { id: 12345, kind: 'pulsar', period_s: 0.0331 },
+    citation: 'ATNF pulsar catalogue',
+  });
+  assert.equal(selected.kind, 'pulsar');
+  assert.equal(selected.id, '12345');
+  assert.equal(selected.period_s, 0.0331);
+  assert.equal(selected.citation, 'ATNF pulsar catalogue');
 });

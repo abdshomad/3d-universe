@@ -67,14 +67,18 @@ export function createSparkLayers({ events, worldPositions, citation }) {
   for (const [kind, group] of byKind) {
     const style = eventStyle(kind);
     const positions = [];
-    for (const event of group) {
+    const vertexEvent = [];
+    group.forEach((event, eventIndex) => {
       const point = worldPositions.get(event.id);
-      if (!point) continue; // an event we cannot place is not drawn
+      if (!point) return; // an event we cannot place is not drawn
       const size = sparkSizeForFlux(event.flux_mjy);
       for (const [x, y, z] of sparkGlyphPoints({ size })) {
         positions.push(point[0] + x, point[1] + y, point[2] + z);
+        // Recorded rather than inferred: unplaceable events are skipped, so a
+        // vertex index is not an event index without this.
+        vertexEvent.push(eventIndex);
       }
-    }
+    });
     if (positions.length === 0) continue;
 
     const geometry = new BufferGeometry();
@@ -91,7 +95,14 @@ export function createSparkLayers({ events, worldPositions, citation }) {
     lines.name = `sparks:${kind}`;
     lines.renderOrder = 15;
     lines.frustumCulled = false;
-    lines.userData = { kind, count: group.length, label: style.label };
+    lines.userData = {
+      kind,
+      count: group.length,
+      label: style.label,
+      events: group,
+      vertexEvent,
+      citation,
+    };
     layers.push(lines);
   }
   return layers;

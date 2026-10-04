@@ -108,7 +108,16 @@ export function cardForEvent(event, { observerYear } = {}) {
   if (event.flux_mjy !== undefined) pairs.push(['flux at 400 MHz', `${formatNumber(event.flux_mjy, 1)} mJy`]);
   if (event.period_s !== undefined) pairs.push(['period', `${formatNumber(event.period_s, 6)} s`]);
   if (event.age_yr !== undefined) pairs.push(['age', `${formatNumber(event.age_yr, 0)} yr`]);
-  pairs.push(['distance', formatDistance(event.distance_pc)]);
+  // The layer places events by distance_kpc, so the card quotes the same number
+  // in the same units. A dash where the sky is drawn is a card disagreeing with
+  // what is on screen.
+  if (event.distance_pc !== undefined && event.distance_pc !== null) {
+    pairs.push(['distance', formatDistance(event.distance_pc)]);
+  } else if (event.distance_kpc !== undefined && event.distance_kpc !== null) {
+    pairs.push(['distance', `${formatNumber(event.distance_kpc, 2)} kpc`]);
+  } else {
+    pairs.push(['distance', DASH]);
+  }
   pairs.push(['distance from', event.distance_source ?? 'unknown']);
   if (light) pairs.push(light);
   return card(event.name ?? event.id, pairs, event.provenance ?? event.citation?.dataset ?? 'measured');

@@ -15,6 +15,7 @@ import { sampleIntegrity } from './core/integrity.js';
 import { Cinematic } from './core/cinematic.js';
 import {
   cellIdentity,
+  eventIdentity,
   identityAt,
   isClick,
   nearestCellOnScreen,
@@ -567,6 +568,11 @@ function pickAt(clientX, clientY) {
   const perPixel = worldWidthForPixels(depthPc * METRES_PER_PC, 1, atlas.camera.fov, rect.height);
   raycaster.params.Points.threshold = perPixel * 4;
 
+  // Sparks are drawn on top of the stars, so they are picked on top of them:
+  // a click must name what the viewer can actually see.
+  const event = pickEventAt(ndc);
+  if (event) return event;
+
   const hits = raycaster.intersectObjects(atlas.layers, false).map((hit) => ({
     tileId: hit.object.userData?.tileId ?? null,
     index: hit.index,
@@ -582,6 +588,35 @@ function pickAt(clientX, clientY) {
     if (identity) return { ...identity, world: starIndex.positions[best.index] };
   }
   return pickCellAt(ndc);
+}
+
+/**
+ * Sparks are drawn with depth testing off and a high render order, so they sit
+ * on top of the stars behind them. Picking in the same order keeps a click from
+ * naming a star that is not what the viewer can see.
+ */
+function pickEventAt(ndc) {
+  if (sparkLayers.length === 0) return null;
+  const rect = canvas.getBoundingClientRect();
+  for (const layer of sparkLayers) {
+    const positions = layer.geometry.attributes.position.array;
+    const count = positions.length / 3;
+    const projected = new Float64Array(count * 3);
+    const vertex = new Vector3();
+    for (let i = 0; i < count; i += 1) {
+      vertex.set(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
+        .project(atlas.camera);
+      projected[3 * i] = vertex.x;
+      projected[3 * i + 1] = vertex.y;
+      projected[3 * i + 2] = vertex.z;
+    }
+    const hit = nearestCellOnScreen(projected, ndc, { width: rect.width, height: rect.height });
+    if (!hit) continue;
+    const eventIndex = layer.userData.vertexEvent?.[hit.index];
+    const event = layer.userData.events?.[eventIndex];
+    return eventIdentity({ event, citation: layer.userData.citation });
+  }
+  return null;
 }
 
 /**

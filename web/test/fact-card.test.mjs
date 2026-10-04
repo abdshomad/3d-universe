@@ -155,3 +155,26 @@ test('a clicked cell says it is a quantised value, not an overdensity', () => {
   assert.ok(!cellText.includes('galaxy'), cellText);
   assert.ok(!cellText.includes('void'), cellText);
 });
+
+test('an event card quotes the distance the layer actually placed it at', () => {
+  // A pulsar placed from a dispersion measure has distance_kpc and no pc. The
+  // card must not show a dash where the sky shows a position.
+  const dispersion = cardFor({
+    id: 'pulsar:B0906-17', kind: 'pulsar', name: 'B0906-17',
+    period_s: 0.401626, flux_mjy: 16.0, distance_kpc: 1.01,
+    distance_source: 'dispersion-measure',
+    citation: { dataset: 'ATNF pulsar catalogue' },
+  });
+  const label = (needle) => dispersion.rows.find(([key]) => key === needle)?.[1];
+  assert.equal(label('distance'), '1.01 kpc');
+  assert.equal(label('distance from'), 'dispersion-measure');
+  assert.equal(label('kind').toUpperCase(), 'PULSAR');
+  assert.ok(dispersion.provenance.includes('ATNF'));
+
+  const measured = cardFor({
+    id: 'pulsar:x', kind: 'pulsar', name: 'x', distance_pc: 280,
+    distance_source: 'parallax', citation: { dataset: 'ATNF' },
+  });
+  const pcLabel = measured.rows.find(([key]) => key === 'distance')?.[1];
+  assert.ok(pcLabel.includes('280'), pcLabel);
+});
