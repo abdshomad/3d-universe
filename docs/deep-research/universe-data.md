@@ -23,16 +23,20 @@ measured one exists is a correctness bug, not a style choice.
 
 Verified reachable, with real payloads:
 
-- **ESA Gaia Archive TAP** (ADQL, sync): works, but slow — a `SELECT TOP 1` round-trip took ~36 s.
+- **Gaia@AIP mirror** (`gaia.aip.de/tap/sync`, VOTable): **the working path.** A parallax-filtered
+  query returns in ~1 s:
   ```
-  GET https://gea.esac.esa.int/tap-server/tap/sync
-      ?REQUEST=doQuery&LANG=ADQL&FORMAT=csv
-      &QUERY=SELECT+TOP+1+source_id,ra,dec,parallax+FROM+gaiadr3.gaia_source
-  → source_id,ra,dec,parallax
-  → 137332953680255488,45.000006268957925,35.26727307493361,-0.21213175292132727
+  SELECT TOP 5 source_id,ra,dec,parallax,phot_g_mean_mag,bp_rp
+  FROM gaiadr3.gaia_source WHERE parallax > 10 AND phot_g_mean_mag < 8 ORDER BY parallax DESC
+  → 762815470562110464, 165.83096, 35.94865, 392.75, 6.55, 2.2156   (2.55 pc)
   ```
-  Consequence for architecture: the browser cannot query Gaia live per frame or even per hover.
-  All catalog access must be **batched server-side and baked into static binary assets**.
+- **ESA Gaia Archive TAP** (ADQL, sync): unreliable from here. A `SELECT TOP 1` round-trip took
+  ~36 s; the same filtered query exceeds 90 s; and the full filtered query returns after 10–42 s
+  with an async `JOBID` and a VOTable containing **no `TABLEDATA`** — a job that would need
+  polling. Use the mirror; revisit ESA only with a job-polling implementation in hand.
+
+  Consequence for architecture, unchanged by the mirror: the browser never queries a live
+  archive. All catalog access is **batched offline and baked into static binary assets**.
 - **VizieR** (`vizier.cds.unistra.fr`, ASU protocol): 200 OK, header advertises `ASU`/IVOA.
 - **JPL SBDB Query API**: 200 OK, returns physical parameters (e.g. Ceres absolute magnitude 3.34,
   slope parameter G 0.12) — usable directly for T0.

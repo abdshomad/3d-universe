@@ -16,21 +16,23 @@ So the browser must consume baked artifacts. This sub-plan is the whole data con
 
 | Source | Access | Contents |
 |---|---|---|
-| ESA Gaia Archive | TAP/ADQL, verified live | Positions, parallax, G/BP/RP magnitudes → distances, colors |
-| JPL SBDB Query API | HTTPS JSON, verified live | Small-body orbits + physical parameters (T0) |
-| NASA/ESA/ESO imagery | HTTP, public domain | Deep-field backdrop layers |
+| Gaia DR3 | Gaia@AIP TAP mirror, ~1 s, verified live | Positions, parallax, G/BP/RP magnitudes → distances, colors |
+| JPL SBDB Query API | HTTPS JSON, verified live | Small-body orbits → real 3D positions at catalog epoch |
+| NASA image library | HTTPS JSON, verified live, public domain | Deep-field backdrop layers |
 
 HEASARC TAP timed out from this host — treat as optional, re-probe before depending on it.
 
-## Tasks
+The official ESA archive TAP is available but unusable from this host (async job, no `TABLEDATA`);
+the ingest package fails loudly on an empty result rather than returning nothing.
 
-- [ ] `[TODO]` `ingest/` Python package with one module per source: `gaia.py`, `sbdb.py`, `imagery.py`.
-- [ ] `[TODO]` Shared extraction schema: `SourceId, ra, dec, distance_pc, mag, color_index, kind,
-  provenance`.
-- [ ] `[TODO]` Parallax → distance with **NaN handling**; drop negative/zero parallax rather than
-  emitting negative distances. A star without a parallax has no 3D position — it must not enter T1.
-- [ ] `[TODO]` Magnitude → size/brightness and B−V → RGB conversion in one place, shared by bake and
-  renderer so both agree.
+- [x] `ingest/` Python package with one module per source: `gaia.py`, `sbdb.py`, `imagery.py`
+  (done 2026-10-04, verified against all three live sources).
+- [x] Shared extraction schema: `source_id, ra_deg, dec_deg, distance_pc, mag, color_index,
+  kind, provenance` — `ingest/schema.py`.
+- [x] Parallax → distance with NaN handling; unusable parallaxes are dropped, never given a
+  fabricated distance — `ingest/astro/distance.py`.
+- [x] Magnitude → size/brightness and B−V → RGB in one place — `ingest/astro/photometry.py`
+  (verified: B−V 2.0 renders orange-red, −0.3 blue-white).
 - [ ] `[TODO]` Tile writer: binary, quantized position/mag/color, with a tile index.
 - [ ] `[TODO]` `manifest.json`: tile bounds, source catalog + release, row-id range, checksum.
 - [ ] `[TODO]` Bake T1 slice (stars within a configurable distance) and verify counts against the

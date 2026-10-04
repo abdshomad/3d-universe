@@ -26,3 +26,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
 - 2026-10-04 — `i` init: deep research, PRD, art direction, reference videos; phase-1 plan split into
   5 sub-plans; grill locked 5 decisions (500 Mpc / DESI tier, simulated fill badged, web + three.js
   WebGPU, interactive atlas + cinematic mode, public web app).
+- 2026-10-04 — `n` #1 (sub-plan 01): `ingest/` package built and run against live sources — Gaia
+  (nearest stars at 1.30 pc), JPL SBDB (Ceres, real orbits), NASA imagery (asset downloads 200).
+  Found the Gaia@AIP mirror answers in ~1 s where the official ESA TAP returns an async job with no
+  `TABLEDATA`; ESA path now fails loudly instead of returning empty. README added.
