@@ -50,3 +50,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   its axis on frame one; and the start radius was clamped against the target, teleporting the camera
   from 1 m to 5e16 m. Sweep rate now holds at 6.83 rad/s (spread 4.4e-4). Depth is banded, not one
   buffer: 41 km per step at 1 AU versus 595 km.
+- 2026-10-04 — `n` #7 (sub-plan 02): octree LOD with physical brightness culling; tiles now carry a
+  magnitude range so LOD can ask whether a tile is still bright enough to earn budget. Three real
+  bugs found on the way: the box/plane test used min·n and max·n (wrong whenever a normal mixes
+  signs, so it culled tiles in plain view); the octree passed a `Box` where a depth was expected and
+  recursed forever; and the culling pyramid was built at the camera's real position, where a
+  1e20 m coordinate makes every direction give the same garbage planes.

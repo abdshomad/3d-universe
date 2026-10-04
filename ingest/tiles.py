@@ -59,6 +59,7 @@ class TileHeader:
     first_source_id: str
     last_source_id: str
     skipped: int = 0
+    mag_range: list[float] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> bytes:
@@ -159,6 +160,7 @@ def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
         first_source_id=kept[0].source_id,
         last_source_id=kept[-1].source_id,
         skipped=skipped,
+        mag_range=_magnitude_range(kept),
     )
     return Tile(header=header, ids=array("Q", ids), pos_q=pos_q, mag=mag, rgb=rgb)
 
@@ -230,6 +232,14 @@ def _quantize(value: float, origin: float, extent: float) -> int:
     scaled = (value - origin) / extent * MAX_POSITION_U16
     return int(min(max(round(scaled), 0), MAX_POSITION_U16))
 
+
+
+def _magnitude_range(records: list[CatalogObject]) -> list[float]:
+    """Brightest and faintest magnitude baked into a tile, for LOD decisions."""
+    values = [record.mag for record in records if record.mag is not None]
+    if not values:
+        return []
+    return [round(min(values), 3), round(max(values), 3)]
 
 def _quantize_mag(magnitude: float | None) -> int:
     if magnitude is None:

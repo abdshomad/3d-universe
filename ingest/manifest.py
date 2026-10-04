@@ -36,6 +36,7 @@ class TileEntry:
     release: str
     first_source_id: str
     last_source_id: str
+    mag_range: list[float] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -84,6 +85,7 @@ def entry_for(path: str | Path) -> TileEntry:
         release=prov.get("release", "unknown"),
         first_source_id=header.first_source_id,
         last_source_id=header.last_source_id,
+        mag_range=list(header.mag_range),
     )
 
 

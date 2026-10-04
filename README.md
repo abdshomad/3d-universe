@@ -59,6 +59,10 @@ npm test        # node --test, 12 checks over the engine core
   float32 keeps its integral part.
 - `web/src/core/depth-model.js` — contiguous scale bands. One buffer over 29 decades would leave
   595 km per depth step at 1 AU; the bands leave 41 km, and 1.2 mm at 1 km.
+- `web/src/core/lod-tree.js` — octree over tile bounds. Cull by view pyramid, forward test and
+  distance; spend the point budget on the tiles covering the most sky, striding the rest.
+- `web/src/core/box.js`, `web/src/core/frustum.js` — boxes and camera-relative side planes, built at
+  the origin because a projection evaluated at 1e20 m returns the same answer for every direction.
 
 ## Verified access paths
 

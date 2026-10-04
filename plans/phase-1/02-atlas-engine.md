@@ -28,7 +28,11 @@ solve scale without the camera ever visibly snapping.
   integral part — `web/src/core/floating-origin.js`.
 - [x] Depth: contiguous scale bands, not one buffer. A single 29-decade range leaves 595 km per
   depth step at 1 AU; banded leaves 41 km, and 1.2 mm at 1 km — `web/src/core/depth-model.js`.
-- [ ] `[TODO]` Octree LOD: build from tile bounds, cull by frustum and by apparent brightness.
+- [x] Octree LOD: `web/src/core/lod-tree.js` builds from tile bounds and magnitude range alone,
+  culls by view pyramid, by forward test and by distance, then spends the point budget on the tiles
+  covering the most sky. Brightness is physical: a star baked at magnitude G from Earth shows as
+  G + 5·log₁₀(d/d₀) elsewhere. On the real baked tile: 3000 points at full brightness from the Sun,
+  culled entirely from 50 kpc, and a 500-point budget honoured exactly.
 - [ ] `[TODO]` Instanced point rendering with additive blending; measure points/frame.
 - [ ] `[TODO]` Frame budget controller: LOD degrades before frame rate does.
 - [ ] `[TODO]` Post chain: bloom → ACES tonemap → vignette (floor `#05060A`, never crushed to
