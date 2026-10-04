@@ -18,6 +18,7 @@ from pathlib import Path
 from ingest import manifest as manifest_module
 from ingest.bake import DEFAULT_DIR, bake_gaia, bake_sbdb
 from ingest.sources import gaia, imagery, sbdb
+from ingest.verify import verify_dir
 
 
 def _parse_cone(value: str | None) -> tuple[float, float, float] | None:
@@ -94,6 +95,16 @@ def _run_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_verify(args: argparse.Namespace) -> int:
+    reports = verify_dir(args.dir)
+    if not reports:
+        print(f"no tiles in {args.dir}", file=sys.stderr)
+        return 1
+    for report in reports:
+        print(report.summary())
+    return 0 if all(report.ok for report in reports) else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ingest", description="Catalog ingestion")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -130,6 +141,10 @@ def build_parser() -> argparse.ArgumentParser:
     manifest_parser = sub.add_parser("manifest", help="index a directory of tiles")
     manifest_parser.add_argument("--dir", default=DEFAULT_DIR)
     manifest_parser.set_defaults(func=_run_manifest)
+
+    verify_parser = sub.add_parser("verify", help="check tiles against their catalog")
+    verify_parser.add_argument("--dir", default=DEFAULT_DIR)
+    verify_parser.set_defaults(func=_run_verify)
 
     return parser
 

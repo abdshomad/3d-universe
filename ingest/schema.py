@@ -29,6 +29,12 @@ class Provenance:
     def citation(self) -> str:
         return f"{self.catalog} {self.release}"
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Provenance":
+        """Rebuild from a tile header, so a card can cite with the catalog offline."""
+        known = {"catalog", "release", "query", "source_url", "fetched_at", "flag"}
+        return cls(**{key: value for key, value in data.items() if key in known})
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogObject:

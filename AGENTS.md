@@ -38,3 +38,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
 - 2026-10-04 — `n` #3 (sub-plan 01): `ingest/manifest.py` + `manifest` CLI. Per-tile bounds, unit,
   catalog/release, provenance flag, row-id range and SHA-256; digests verified against `sha256sum`
   and a one-byte flip is detected.
+- 2026-10-04 — `n` #4 (sub-plan 01): `ingest/verify.py` + `verify` CLI prove the provenance round
+  trip by re-running each tile's stored query and matching catalog ids. Tiles gained a per-object id
+  array (`U3DTILE2`, 19 B/star) because a tile without ids cannot cite a star. Corrupting a tile
+  (bad id or a shoved position) makes verification fail, so the check has teeth.

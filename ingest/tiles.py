@@ -2,19 +2,23 @@
 
 A tile is a JSON header followed by a struct-of-arrays payload. Positions are
 quantized to 16 bits per axis inside the tile bounds, magnitude to milli-
-magnitudes, colour to 8 bits per channel: ~11 bytes per star, with a
-quantization error far below the catalog's own astrometric error.
+magnitudes, colour to 8 bits per channel, and every object keeps its catalog id
+as a 64-bit integer. About 19 bytes per star, with a quantization error far
+below the catalog's own astrometric error.
 
-Layout:
+Layout (U3DTILE2):
 
-    magic   b"U3DTILE1"
+    magic   b"U3DTILE2"
     u32     header length
     header  UTF-8 JSON (tile id, unit, count, origin, extent, provenance)
-    payload pos_q[3*n] u16 | mag[n] i16 | rgb[3*n] u8
+    payload ids[n] u64 | pos_q[3*n] u16 | mag[n] i16 | rgb[3*n] u8
 
 Positions are quantized in the tile's own unit: parsecs for stars (Gaia's reach)
 or astronomical units for small bodies. Ceres sits 2e-5 pc away, so quantizing
 the solar system in parsecs would collapse the whole tier into one point.
+
+The id array is what makes provenance clickable: a selected star carries the row
+identifier that resolves back to its catalog entry.
 """
 
 from __future__ import annotations
@@ -30,13 +34,14 @@ from ingest.astro.coordinates import ra_dec_to_vector
 from ingest.astro.photometry import color_to_rgb
 from ingest.schema import CatalogObject
 
-MAGIC = b"U3DTILE1"
+MAGIC = b"U3DTILE2"
 HEADER_SIZE = len(MAGIC) + 4
 MILLI_MAGS_PER_MAG = 1000
 MAX_POSITION_U16 = 65535
 PARSEC_PER_AU = 206264.806247
 SMALL_BODY_UNIT = "au"
 STAR_UNIT = "pc"
+STRIDE_BYTES = 19
 
 
 class TileError(RuntimeError):
@@ -53,6 +58,7 @@ class TileHeader:
     provenance: dict[str, Any]
     first_source_id: str
     last_source_id: str
+    skipped: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> bytes:
@@ -66,12 +72,16 @@ class TileHeader:
 @dataclass(slots=True)
 class Tile:
     header: TileHeader
+    ids: array
     pos_q: array
     mag: array
     rgb: array
 
     def __len__(self) -> int:
         return self.header.count
+
+    def id_at(self, index: int) -> int:
+        return self.ids[index]
 
 
 def unit_for(records: Iterable[CatalogObject]) -> str:
@@ -81,11 +91,33 @@ def unit_for(records: Iterable[CatalogObject]) -> str:
     return STAR_UNIT
 
 
+def numeric_id(value: str) -> int | None:
+    """Catalog ids must be integers to fit the id array; text ids are skipped."""
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
-    """Quantize catalog records into a tile. Records without a distance are skipped."""
-    kept = [r for r in records if r.distance_pc is not None]
+    """Quantize catalog records into a tile.
+
+    Records without a distance or without an integer id are skipped and counted
+    in the header, never silently dropped.
+    """
+    kept: list[CatalogObject] = []
+    ids: list[int] = []
+    skipped = 0
+    for record in records:
+        record_id = numeric_id(record.source_id)
+        if record.distance_pc is None or record_id is None:
+            skipped += 1
+            continue
+        kept.append(record)
+        ids.append(record_id)
+
     if not kept:
-        raise TileError("no record carries a distance; nothing to bake")
+        raise TileError("no record carries both a distance and an integer id")
 
     unit = unit_for(kept)
     scale = PARSEC_PER_AU if unit == SMALL_BODY_UNIT else 1.0
@@ -126,8 +158,9 @@ def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
         provenance=_provenance_of(kept[0]),
         first_source_id=kept[0].source_id,
         last_source_id=kept[-1].source_id,
+        skipped=skipped,
     )
-    return Tile(header=header, pos_q=pos_q, mag=mag, rgb=rgb)
+    return Tile(header=header, ids=array("Q", ids), pos_q=pos_q, mag=mag, rgb=rgb)
 
 
 def write_tile(path: str | Path, tile: Tile) -> Path:
@@ -138,6 +171,7 @@ def write_tile(path: str | Path, tile: Tile) -> Path:
         fh.write(MAGIC)
         fh.write(struct.pack("<I", len(header)))
         fh.write(header)
+        fh.write(tile.ids.tobytes())
         fh.write(tile.pos_q.tobytes())
         fh.write(tile.mag.tobytes())
         fh.write(tile.rgb.tobytes())
@@ -153,23 +187,23 @@ def read_tile(path: str | Path) -> Tile:
     header = TileHeader.from_json(raw[HEADER_SIZE:start])
 
     count = header.count
-    pos_bytes = raw[start : start + 6 * count]
-    if len(pos_bytes) != 6 * count:
+    end = start + STRIDE_BYTES * count
+    if len(raw) < end:
         raise TileError(f"{path}: truncated payload")
+    ids = array("Q", raw[start : start + 8 * count])
+    pos_q = array("H", raw[start + 8 * count : start + 14 * count])
+    mag = array("h", raw[start + 14 * count : start + 16 * count])
+    rgb = array("B", raw[start + 16 * count : end])
 
-    return Tile(
-        header=header,
-        pos_q=array("H", pos_bytes),
-        mag=array("h", raw[start + 6 * count : start + 8 * count]),
-        rgb=array("B", raw[start + 8 * count : start + 11 * count]),
-    )
+    return Tile(header=header, ids=ids, pos_q=pos_q, mag=mag, rgb=rgb)
 
 
 def decode_position(tile: Tile, index: int) -> tuple[float, float, float]:
     """Recover a position in the tile's unit, accurate to one quantization step."""
     header = tile.header
     out = [
-        header.origin[axis] + tile.pos_q[3 * index + axis] * header.extent[axis] / MAX_POSITION_U16
+        header.origin[axis]
+        + tile.pos_q[3 * index + axis] * header.extent[axis] / MAX_POSITION_U16
         for axis in range(3)
     ]
     return (out[0], out[1], out[2])

@@ -30,15 +30,16 @@ python -m ingest.cli sbdb --limit 50 --kind a                  # asteroids, real
 python -m ingest.cli imagery --out assets/imagery.json         # NASA deep-field imagery
 python -m ingest.cli bake --source gaia --limit 5000           # fetch -> quantize -> tile file
 python -m ingest.cli manifest --dir assets/tiles            # index tiles, with checksums
+python -m ingest.cli verify --dir assets/tiles             # ids still resolve to their catalog
 ```
 
 Records carry `ra_deg`, `dec_deg`, `distance_pc`, `mag`, `color_index` and a provenance block naming
 the catalog, release, exact query and fetch time. A star without a usable parallax gets
 `distance_pc: null` and is dropped from the star tier — distances are never invented.
 
-Tiles are `U3DTILE1`: a JSON header plus `pos_q u16 | mag i16 | rgb u8`, about 11 bytes per star.
-Each tile carries its own unit (parsecs for stars, AU for small bodies) plus the provenance block, so
-a tile is self-citing.
+Tiles are `U3DTILE2`: a JSON header plus `ids u64 | pos_q u16 | mag i16 | rgb u8`, 19 bytes per star.
+Each tile carries its own unit (parsecs for stars, AU for small bodies), the provenance block and every
+catalog id, so a selected object resolves to its row and a tile is self-citing.
 
 ## Verified access paths
 

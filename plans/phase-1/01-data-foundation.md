@@ -43,7 +43,11 @@ the ingest package fails loudly on an empty result rather than returning nothing
   > 50 mas and 228 at > 100 mas — exact match.
 - [x] Bake T0 slice for the solar system + major small bodies — 200 asteroids at real positions in
   AU, round-trip error 6e-5 AU.
-- [ ] `[TODO]` Provenance round-trip test: every id in a tile resolves back to its catalog row.
+- [x] Provenance round-trip test: every id in a tile resolves back to its catalog row —
+  `ingest/verify.py` re-runs the tile's stored query against the same endpoint and matches by id.
+  Gaia 2000/2000 and SBDB 150/150 resolve, position delta at the quantization bound. Two negative
+  cases fail loudly: a bogus id (1999/2000) and a shifted star (0.539 pc vs 0.000342 tolerance).
+  Tiles now store per-object ids (`U3DTILE2`), so a selected star is citable.
 - [ ] `[TODO]` Gaia DR4 re-bake path: the DR4 lands 2026-12-02; changing the release must be a config
   edit, not a code change.
 
