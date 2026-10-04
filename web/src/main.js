@@ -17,6 +17,7 @@ import { createScaleOutPath } from './routes/scale-out.js';
 import { DEEP_FIELDS } from './data/deep-fields.js';
 import { Backdrop } from './render/backdrop.js';
 import { anglesFromDirection, directionFromAngles } from './core/view.js';
+import { createNebulosity } from './render/nebulosity.js';
 
 const TILE_DIR = '../assets/tiles';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
@@ -129,7 +130,27 @@ function redraw() {
     }));
     drawn += chosen.drawCount;
   }
+  rebuildNebulosity(scale);
   atlas.stats.drawCount = drawn;
+}
+
+let nebulosity = null;
+
+/** Noise-driven dust. Rebuilt with the star layers because it shares their
+ *  render space; the seed keeps the same sky on every machine. */
+function rebuildNebulosity(scale) {
+  if (nebulosity) {
+    atlas.scene.remove(nebulosity);
+    nebulosity.geometry.dispose();
+    nebulosity.material.dispose();
+  }
+  nebulosity = createNebulosity({
+    radiusMetres: Math.max(scale * 0.6, 1e3),
+    count: 24000,
+    cameraMetres: atlas.origin.originMetres,
+  });
+  atlas.scene.add(nebulosity);
+  atlas.stats.nebulaPoints = nebulosity.userData.pointCount;
 }
 
 /** Keep the depth range wrapped around what is actually on screen. */

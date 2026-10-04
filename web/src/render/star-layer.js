@@ -3,22 +3,13 @@
  *
  * Size and brightness come from apparent magnitude, colour from the baked B-V,
  * exactly as `ingest/astro/photometry.py` does, so the tile and the screen agree.
- *
- * The material is a node material, not a GLSL ShaderMaterial: three's WebGPU
- * renderer rejects ShaderMaterial outright, so a custom-shader star field draws
- * nothing at all.
+ * The point primitive itself — node material, additive, screen-space size — lives
+ * in `point-layer.js`, shared with the nebulosity.
  */
 
-import {
-  AdditiveBlending,
-  BufferAttribute,
-  BufferGeometry,
-  Points,
-  PointsNodeMaterial,
-} from 'three';
-import { attribute } from 'three/tsl';
-
 import { colourAt, decodeAllPositions, magnitudeAt } from '../data/tile-reader.js';
+import { createAdditivePoints } from './point-layer.js';
+
 const EXPOSURE = 8000; // a magnitude-12 star must read as a faint dot, not black
 const FAINT_MAGNITUDE = 12;
 const BRIGHT_MAGNITUDE = 0;
@@ -33,6 +24,7 @@ export function spriteScale(magnitude) {
   return MIN_PIXELS + (MAX_PIXELS - MIN_PIXELS) * Math.sqrt(t);
 }
 
+/** Apparent magnitude to a linear brightness multiplier. */
 export function brightness(magnitude) {
   if (magnitude === null || Number.isNaN(magnitude)) return 0.5 * EXPOSURE;
   return Math.min(Math.pow(10, -0.4 * (magnitude - BRIGHT_MAGNITUDE)) * EXPOSURE, 40);
@@ -76,26 +68,13 @@ export function createStarLayer(tile, {
     sizes[slot] = spriteScale(magnitude);
   }
 
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new BufferAttribute(colours, 3));
-  geometry.setAttribute('size', new BufferAttribute(sizes, 1));
-
-  const material = new PointsNodeMaterial({
-    transparent: true,
-    blending: AdditiveBlending,
-    depthWrite: false,
-    // Screen-space size, not world units: at 6e12 m a world-sized point
-    // attenuates to a millionth of a pixel. A star's apparent size barely
-    // changes over these distances anyway, which is what this reproduces.
-    sizeAttenuation: false,
+  const points = createAdditivePoints({
+    positions,
+    colours,
+    sizes,
+    name: `stars:${tile.header.tile_id}`,
   });
-  material.colorNode = attribute('color', 'vec3');
-  material.sizeNode = attribute('size', 'float');
-
-  const points = new Points(geometry, material);
-  points.frustumCulled = false;
-  points.userData.pointCount = count;
+  points.userData.tileId = tile.header.tile_id;
   return points;
 }
 

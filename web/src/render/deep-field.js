@@ -26,7 +26,7 @@ import {
   PlaneGeometry,
   SRGBColorSpace,
   Texture,
-} from 'three';
+} from 'three/webgpu';
 import { celestialDirection } from '../core/celestial.js';
 import { FIELD_DEPTHS } from '../data/deep-fields.js';
 

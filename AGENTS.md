@@ -85,3 +85,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   culling frustum; and route bearings and celestial RA used two different axis conventions, so
   "look at 145 degrees" missed the field placed at 145. Both now live in `core/view.js` and
   `core/celestial.js` with round-trip tests. 78/78 tests pass.
+- 2026-10-04 — `n` #14 (sub-plan 03): nebulosity from deterministic 3D fBm noise, plus the shared
+  additive point primitive (`render/point-layer.js`) that stars and dust now both use. Two findings
+  worth keeping: the node tests could not resolve `PointsNodeMaterial` from three's main build, so
+  every render module now imports `three/webgpu` explicitly; and an A/B of the dust is meaningless
+  while the camera is flying — the isolated comparison (stars and backdrop hidden) is what showed
+  18,588 lit pixels against 12,954.

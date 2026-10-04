@@ -15,7 +15,7 @@
  * directly behind the camera, so callers must apply the forward test too.
  */
 
-import { Frustum, PerspectiveCamera } from 'three';
+import { Frustum, PerspectiveCamera } from 'three/webgpu';
 
 const SIDE_PLANE_COUNT = 4;
 const MATRIX_FOV_DEGREES = 45;

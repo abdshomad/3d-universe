@@ -10,7 +10,7 @@
  * within a parsec is clipped and the frame comes out black.
  */
 
-import { PerspectiveCamera, Scene, WebGPURenderer } from 'three';
+import { PerspectiveCamera, Scene, WebGPURenderer } from 'three/webgpu';
 
 import { CameraRig } from '../core/camera-rig.js';
 import { FloatingOrigin } from '../core/floating-origin.js';

@@ -19,7 +19,7 @@
  *   including the floor. Take the colour channels and keep the alpha.
  */
 
-import { PostProcessing } from 'three';
+import { PostProcessing } from 'three/webgpu';
 import { max, pass, vec3, vec4 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 

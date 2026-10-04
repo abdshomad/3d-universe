@@ -7,7 +7,7 @@
  * rebuilds is what makes the parallax real.
  */
 
-import { Group, TextureLoader } from 'three';
+import { Group, TextureLoader } from 'three/webgpu';
 
 import { createFieldPlanes, loadFieldTexture, planeDistance } from './deep-field.js';
 

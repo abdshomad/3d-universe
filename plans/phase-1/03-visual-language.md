@@ -13,7 +13,11 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   composed positions, each declared `authored` rather than passed off as measured. Planes stay fixed
   in world space and rebuild only when the view scale leaves its band, so parallax is real. Verified
   by A/B in a browser: backdrop on p99 luminance 20, off p99 7.
-- [ ] `[TODO]` **Procedural nebulosity**: low-frequency 3D noise, near-black floor, additive.
+- [x] **Procedural nebulosity**: `web/src/core/noise.js` (deterministic 3D value noise + fBm) and
+  `web/src/render/nebulosity.js`. Blobs are drawn only where the noise is above a threshold, so the
+  medium has holes instead of a wash, and the seed makes the same sky on every machine. Isolated in a
+  browser: lit pixels 18,588 with the dust, 12,954 without (+43%). The point primitive it shares with
+  the star field now lives in `render/point-layer.js`.
 - [ ] `[TODO]` **Star dust**: far (1 px) and near (soft sprite) instanced layers with parallax.
 - [ ] `[TODO]` **Measured objects**: additive sprites, magnitude → brightness, B−V → RGB.
 - [ ] `[TODO]` **Relations**: tapered Bézier ribbons, noise-modulated alpha, hue per relation type.
