@@ -12,9 +12,18 @@ import { METRES_PER_PC } from './units.js';
 import { identityAt, positionAt } from './picker.js';
 import { LIGHT_YEARS_PER_PC } from './light-travel.js';
 
+/**
+ * The three states a row may claim. DERIVED is the one that is easy to forget:
+ * an exoplanet position is an archive distance applied to a measured direction,
+ * which is a real number and still not an astrometric solution.
+ */
+export const ALLOWED_FLAGS = new Set(['MEASURED', 'DERIVED', 'SIMULATED']);
+
 export const COLUMNS = [
   'id', 'flag', 'x_pc', 'y_pc', 'z_pc', 'distance_pc', 'light_travel_yr',
   'magnitude', 'colour_index', 'provenance',
+  // Only DERIVED rows fill these; a star leaves them empty rather than lying.
+  'host', 'disc_year', 'st_teff', 'discovery_method',
 ];
 
 /** One CSV field: quote it only when the content demands it. */
@@ -110,7 +119,7 @@ export function buildSlice({ starIndex, drawnPoints, originMetres = [0, 0, 0], f
  * what it is. A row that cannot is refused rather than exported as measured.
  */
 export function assertFlagged(rows) {
-  const unflagged = rows.filter((row) => row.flag !== 'MEASURED' && row.flag !== 'SIMULATED');
+  const unflagged = rows.filter((row) => !ALLOWED_FLAGS.has(row.flag));
   if (unflagged.length > 0) {
     throw new Error(`${unflagged.length} row(s) carry no flag and will not be exported`);
   }

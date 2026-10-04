@@ -9,6 +9,7 @@
 import { Raycaster, Vector2 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
+import { attachPlanets, planetRows } from './data/exoplanets.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { identityAt, isClick, pickFromHits } from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
@@ -69,6 +70,7 @@ const TILE_DIR = '../assets/tiles';
 let reticle = null;
 let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
+const EXOPLANET_DIR = '../assets/relations/exoplanets.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
 const SEARCH_DIR = '../assets/search/nearby.json';
@@ -205,6 +207,14 @@ async function start() {
   starIndex = new StarIndex(biggest.worldPositions);
   starIndex.tile = biggest;
 
+  exoplanetPayload = await loadJson(EXOPLANET_DIR).catch(() => null);
+  if (exoplanetPayload) {
+    exoplanetReport = attachPlanets(exoplanetPayload, starIndex);
+    atlas.stats.planets = exoplanetReport.planetsAttached;
+    atlas.stats.planetSystems = exoplanetReport.matched;
+    atlas.stats.planetSystemsUnmatched = exoplanetReport.unmatched;
+  }
+
   atlas.rig.positionMetres = route.sample(0).positionMetres;
   applySharedView(sharedView);
   redraw();
@@ -274,9 +284,11 @@ function downloadSlice() {
     // Whatever the renderer decided to draw is what the file must contain.
     threshold: lssLevels.find((layer) => layer.visible)?.userData.threshold ?? 0,
   });
-  assertFlagged(slice.rows);
+  const planets = exoplanetReport ? planetRows(exoplanetReport) : [];
+  const rows = [...slice.rows, ...planets];
+  assertFlagged(rows);
 
-  const csv = toCsv(slice.columns, slice.rows);
+  const csv = toCsv(slice.columns, rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -284,8 +296,8 @@ function downloadSlice() {
   link.download = `atlas-slice-${Math.round(atlas.stats.points)}p.csv`;
   link.click();
   URL.revokeObjectURL(url); // the click has taken its own reference by now
-  atlas.stats.exported = slice.rows.length;
-  return slice.rows.length;
+  atlas.stats.exported = rows.length;
+  return rows.length;
 }
 
 /**
@@ -349,6 +361,8 @@ let nebulosity = null;
 let dustLayers = [];
 let mediumScale = 0;
 let relationPayload = null;
+let exoplanetReport = null;
+let exoplanetPayload = null;
 let starIndex = null;
 let ribbons = [];
 
@@ -771,6 +785,7 @@ function hudSelection() {
   return {
     kind: 'star',
     id: selection.id,
+    planets: exoplanetReport?.byStar.get(index)?.planets ?? null,
     distancePc: selection.world.length() / METRES_PER_PC,
     magnitude: tile.magnitudes ? tile.magnitudes[index] / 1000 : null,
     colorIndex: null,

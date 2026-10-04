@@ -54,26 +54,32 @@ tests caught it in the same minute. The whole dead statement is gone.
 
 ## E5 — Exoplanet relations: host to planet, cited
 
-**Why now.** The knowledge graph has exactly one edge type — constellation lines, which E4 is about
-to make honest. PRD feature 4 names *exoplanet host → planet* explicitly. It is also the one
-relation type where the data is verified reachable: NASA Exoplanet Archive TAP answered from this
-host, returning positions, distances and host names.
+**Status: done, 2026-10-05, with one part deliberately not built** — `ingest/sources/exoplanets.py`
+pulls `pscomppars`, which is one row per planet; `ps` is one row per *publication* and inflates the
+count to 7,905 rows for 1,630 hosts. Inside 200 pc that is **2,345 planets across 1,652 systems**,
+nearest Proxima Cen b at 1.30 pc, discovered 2016 by radial velocity.
 
-Measured today: `pscomppars` gives **2,345 confirmed planets within 200 pc** with a distance, and
-the `ps` table carries RA/Dec for the same rows — everything a ribbon needs, inside the scale the
-atlas already renders.
+**The edge is not drawn, on purpose.** The scope above asked for a host→planet ribbon. At 50 pc a
+5 AU orbit subtends about a third of an arcsecond — a fraction of a pixel. Drawn at true scale the
+line has no length, and drawn at exaggerated scale it is a diagram pretending to be a measurement.
+So the planet is a **fact about a measured star** instead: the host is a real tile row, and the card
+that names the star names its planets, with the archive as the source. That is the relation this
+scale can actually support.
 
-**Scope.** Ingest planets with a distance inside the atlas's reach, join each to its host star,
-draw the host→planet edge in the existing ribbon language, and give the planet a card: distance,
-discovery year, equilibrium temperature, and the archive citation.
+**A third flag.** An exoplanet has no astrometry, so its 3D position is the archive's `sy_dist`
+applied to a measured direction. That is a real number and not an astrometric solution, so rows and
+cards carry `DERIVED` alongside `MEASURED` and `SIMULATED`, and the export gate now refuses anything
+outside the three.
 
-**Invariant that matters.** A planet's position is *inferred* from its host's direction and the
-archive's distance. Those are different kinds of number, and the card must not present an inferred
-position as though it were astrometric. The flag column already distinguishes them for the CSV
-export; the card needs to as well.
+Verified live: **968 of 1,652 systems** matched a measured star within 10′, carrying **1,440
+planets**; the 684 that matched nothing are counted, not dropped quietly. Export read back: 61,440
+rows — 60,000 `MEASURED`, 1,440 `DERIVED`, with `host`, `disc_year`, `st_teff` and
+`discovery_method` filled for every planet and left empty for every star.
 
-**Exit.** A planet card names its host, cites the archive, and its distance matches the archive row
-that produced it.
+**Two defects reading the file caught.** The exported provenance had an empty citation, because the
+report carried one per matched system and none at the top where the export asked for it. And the
+CSV header had no `host` or `disc_year` column at all, so the archive's data was being collected,
+formatted and then silently discarded — the export looked complete and was not.
 
 ---
 

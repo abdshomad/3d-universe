@@ -137,3 +137,12 @@ test('the threshold reaches the slice', () => {
   const open = buildSlice({ starIndex: starIndex(2), drawnPoints: 2, field: gradedField(), level: 1, threshold: 0 });
   assert.equal(slice.rows.length + 3, open.rows.length);
 });
+
+test('the header carries the columns only planet rows fill', () => {
+  // A row that produces host/disc_year must have somewhere for them to go, or
+  // the export silently drops them.
+  assert.ok(COLUMNS.includes('host'));
+  assert.ok(COLUMNS.includes('disc_year'));
+  const measured = measuredRows({ starIndex: starIndex(2), drawnPoints: 2 });
+  assert.equal(measured[0].host, undefined, 'a star has no host and must not invent one');
+});

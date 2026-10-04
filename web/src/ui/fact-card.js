@@ -44,15 +44,34 @@ function card(name, rowPairs, provenance, extra = {}) {
   return { name, rows: rows(rowPairs), provenance, image: null, ...extra };
 }
 
+/**
+ * Planets confirmed around this star. Their positions are derived from the
+ * archive's distance rather than astrometric, so the row says which is which.
+ */
+function planetRow(planets) {
+  if (!planets || planets.length === 0) return null;
+  const names = planets.slice(0, 3).map((planet) => {
+    const year = planet.disc_year ? ` ${planet.disc_year}` : '';
+    return `${planet.pl_name}${year}`;
+  });
+  const more = planets.length > names.length ? ` +${planets.length - names.length} more` : '';
+  return [
+    'confirmed planets',
+    `${names.join(', ')}${more} · NASA Exoplanet Archive (position derived, not astrometric)`,
+  ];
+}
+
 /** A star from a baked catalogue tile. */
 export function cardForStar(selection, { observerYear } = {}) {
   if (!selection) return null;
   const light = lightRow(selection.distancePc, observerYear);
+  const planets = planetRow(selection.planets);
   return card(selection.name ?? `gaia ${selection.id}`, [
     ['catalogue id', selection.id],
     ['distance', formatDistance(selection.distancePc)],
     ['apparent mag', formatNumber(selection.magnitude, 2)],
     ['colour index B-V', formatNumber(selection.colorIndex, 2)],
+    ...(planets ? [planets] : []),
     ...(light ? [light] : []),
   ], selection.provenance ?? 'esa.gaia DR3 · U3DTILE2 · measured');
 }

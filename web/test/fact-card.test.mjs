@@ -110,3 +110,27 @@ test('the field card says what the tier is not', () => {
   assert.ok(card.provenance.includes('SIMULATED'));
   assert.ok(card.provenance.includes('not the source'), 'DESI is a reference, not the pixels');
 });
+
+test('a star that hosts planets says so, and says the position is derived', () => {
+  const card = cardForStar({
+    id: '5853498713190525696',
+    name: 'Proxima Cen',
+    distancePc: 1.301,
+    magnitude: 11.13,
+    colorIndex: null,
+    planets: [
+      { pl_name: 'Proxima Cen b', disc_year: 2016 },
+      { pl_name: 'Proxima Cen c', disc_year: 2020 },
+    ],
+  });
+  const row = card.rows.find(([label]) => label === 'confirmed planets');
+  assert.ok(row, 'a star with planets carries the row');
+  assert.ok(row[1].includes('Proxima Cen b 2016'), row[1]);
+  assert.ok(row[1].includes('Proxima Cen c 2020'));
+  assert.ok(row[1].includes('not astrometric'), 'derived, not measured');
+});
+
+test('a star with no planets carries no planets row', () => {
+  const card = cardForStar({ id: '1', name: 'Lonely', distancePc: 10, magnitude: 9, colorIndex: null });
+  assert.equal(card.rows.find(([label]) => label === 'confirmed planets'), undefined);
+});
