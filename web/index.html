@@ -74,6 +74,9 @@
         display: none; }
       #epoch-line { position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%);
         color: var(--ink-dim); white-space: pre; }
+      #hint { position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%);
+        color: var(--ink-dim); letter-spacing: 0.2em; white-space: nowrap; }
+      #hint:empty { display: none; }
     </style>
   </head>
   <body>
@@ -103,6 +106,7 @@
         <div><span class="label">data source</span><span class="value" data-hud="source">none</span></div>
       </div>
 
+      <div id="hint"></div>
       <div id="epoch-line">sky epoch —</div>
       <input id="epoch" type="range" min="-10000" max="10000" step="10" value="0"
              aria-label="observer epoch, years from now" />

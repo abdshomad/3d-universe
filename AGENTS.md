@@ -152,3 +152,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   moves the observer's epoch and recomputes arrivals; it deliberately does not re-render the sky,
   because our catalogues describe one epoch and faking a second would be the easiest lie here.
   182/182 tests pass.
+- 2026-10-04 — `n` #28 (sub-plan 04): onboarding, thirty seconds and no wall. Hints are
+  independent timers sharing one HUD slot rather than a queue, because in the queue version a
+  long-lived flight hint blocked the next useful thing for 24 seconds. The design bug was only
+  visible by reading the browser timeline. Verified live: hints supersede each other, and the
+  flight hint retires within a second of the viewer flying. 189/189 tests pass.

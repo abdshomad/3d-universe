@@ -28,6 +28,8 @@ import { FlightController, inputFromKeys } from './core/flight-controls.js';
 import { journeyFromLandmarks } from './core/journey.js';
 import { SearchIndex, flightPathTo } from './core/search.js';
 import { epochSpan, formatYear } from './core/light-travel.js';
+import { Onboarding } from './core/onboarding.js';
+import { OPENING_STEPS } from './data/onboarding.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
@@ -80,6 +82,7 @@ function attachSearchBox() {
     }
     const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
     const path = flightPathTo(match, { fromPc });
+    guide.record('searched');
     cardSelection = { ...match, kind: 'landmark' };
     switchRoute(path, `flight to ${match.name ?? `HIP ${match.hip}`}`);
     result.textContent = `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`;
@@ -126,6 +129,8 @@ async function start() {
   atlas.resize(canvas.clientWidth, canvas.clientHeight);
   await backdrop.load();
   attachEpochScrubber();
+  guide.start();
+  atlas.guide = guide;
 
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
@@ -167,6 +172,7 @@ async function start() {
     // speed law applies unchanged from 1 AU to 100 kpc.
     flight.input(inputFromKeys(keys));
     if (flight.engaged) {
+      if (!freeFlight) guide.record('flew');
       freeFlight = true;
       cardSelection = null;
     }
@@ -192,6 +198,7 @@ async function start() {
     if (budget.sample(delta).changed) redraw();
     updateHud();
     epochReadout();
+    hintReadout();
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -348,6 +355,7 @@ function rebuildReticle() {
   }
   const direction = directionFromRig(atlas.rig);
   selection = selectNearestToView(direction);
+  if (selection) guide.record('selected');
   atlas.stats.selection = selection?.id ?? null;
   if (!selection) return;
 
@@ -445,6 +453,15 @@ function updateHud(now = performance.now()) {
 
 let cardSelection = null;
 let observerYear = new Date().getFullYear();
+const guide = new Onboarding(OPENING_STEPS, { now: () => performance.now() / 1000 });
+
+/** The single hint line, when there is something worth saying. */
+function hintReadout() {
+  const line = document.getElementById('hint');
+  if (!line) return;
+  const hint = guide.current();
+  line.textContent = hint ? hint.text : '';
+}
 
 /** The scrubber moves the observer's epoch. It does not re-render the sky: our
  *  catalogues describe one epoch, and pretending otherwise would be the easiest

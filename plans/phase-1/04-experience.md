@@ -33,7 +33,12 @@ Depends on 03.
   re-render the sky: our catalogues describe one epoch, so pretending otherwise would be the easiest
   lie available to this project. Verified: +2000 years moves both ends of the span by exactly 2000
   while Sirius's lookback stays 8.6 yr, which is the correct physics.
-- [ ] `[TODO]` Onboarding: a 30-second opening that teaches flight without a tutorial wall.
+- [x] Onboarding: `web/src/core/onboarding.js` with the script in `web/src/data/onboarding.js`.
+  Thirty seconds, one line at a time, no wall. Hints are independent timers sharing a single HUD
+  slot — the most recent relevant one wins, so a long-lived hint never blocks the next thing worth
+  saying. Verified in a browser: `hold W to fly out` (t≈4–13) → `type a name to fly somewhere`
+  (t≈17–23) → `J guided journey · R scale out`; the flight hint is gone within a second of the
+  viewer actually flying.
 - [ ] `[TODO]` Accessibility: keyboard-only flight, reduced-motion mode, readable contrast for type.
 - [ ] `[TODO]` Deep links: a URL restores position, orientation, scale, and selection.
 
