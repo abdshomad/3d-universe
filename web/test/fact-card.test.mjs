@@ -134,3 +134,24 @@ test('a star with no planets carries no planets row', () => {
   const card = cardForStar({ id: '1', name: 'Lonely', distancePc: 10, magnitude: 9, colorIndex: null });
   assert.equal(card.rows.find(([label]) => label === 'confirmed planets'), undefined);
 });
+
+test('a clicked cell says it is a quantised value, not an overdensity', () => {
+  const card = cardFor({
+    kind: 'field',
+    radiusMpc: 500, cellMpc: 10.42, grid: 96, seed: 20261004, flag: 'SIMULATED',
+    cell: {
+      index: 3982, x: 38, y: 1, z: 0, quantised: 143,
+      floor: 0.35, ceiling: 4.5, method: 'Gaussian random field',
+    },
+  });
+  const label = (needle) => card.rows.find(([key]) => key === needle)?.[1];
+  assert.ok(label('clicked cell').includes('x 38, y 1, z 0'), label('clicked cell'));
+  assert.ok(label('quantised value').includes('143'), label('quantised value'));
+  assert.ok(label('this is').includes('Gaussian random field'));
+  // Only the cell rows: the card's own honesty row mentions galaxies on purpose.
+  const cellText = [label('clicked cell'), label('quantised value'), label('this is')]
+    .join(' ').toLowerCase();
+  assert.ok(!cellText.includes('overdensity'), cellText);
+  assert.ok(!cellText.includes('galaxy'), cellText);
+  assert.ok(!cellText.includes('void'), cellText);
+});

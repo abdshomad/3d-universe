@@ -4,7 +4,13 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
-import { identityAt, isClick, pickFromHits } from '../src/core/picker.js';
+import {
+  cellIdentity,
+  identityAt,
+  isClick,
+  nearestCellOnScreen,
+  pickFromHits,
+} from '../src/core/picker.js';
 
 /** A tile whose geometry a test can predict: origin 0, 100 pc extent, unit pc. */
 function tile(overrides = {}) {
@@ -94,4 +100,69 @@ test('an unsupported unit is refused rather than silently mis-scaled', () => {
   const bad = tile();
   bad.header.unit = 'furlong';
   assert.throws(() => identityAt({ tile: bad, index: 0 }), /unsupported unit/);
+});
+
+/**
+ * A clicked cell is a number from a generator, and must read like one.
+ */
+test('a cell hit reports where it is in the grid and what it holds', () => {
+  const field = {
+    kind: 'field',
+    grid: 4,
+    radiusMpc: 500,
+    cellMpc: 125,
+    flag: 'SIMULATED',
+    seed: 20261004,
+    method: 'Gaussian random field',
+    quantise: { floor: 0.35, ceiling: 4.5 },
+    scienceReference: 'DESI DR1',
+    cells: new Uint8Array(64).fill(120),
+  };
+  // index 21 in a 4^3 grid is x=1, y=1, z=1
+  const cell = cellIdentity({ field, cellIndex: 21 });
+  assert.equal(cell.kind, 'field');
+  assert.deepEqual([cell.cell.x, cell.cell.y, cell.cell.z], [1, 1, 1]);
+  assert.equal(cell.cell.quantised, 120);
+  assert.equal(cell.cell.floor, 0.35);
+  assert.equal(cell.cell.ceiling, 4.5);
+});
+
+test('a hit outside the cube is not a cell', () => {
+  const field = { grid: 4, cells: new Uint8Array(64), quantise: {}, flag: 'SIMULATED' };
+  assert.equal(cellIdentity({ field, cellIndex: 64 }), null, 'past the end');
+  assert.equal(cellIdentity({ field, cellIndex: -1 }), null);
+  assert.equal(cellIdentity({ field, cellIndex: 1.5 }), null, 'not a cell index');
+  assert.equal(cellIdentity({ cellIndex: 1 }), null, 'no field, no cell');
+});
+
+test('a picked cell has an id, so it can be shared like a star', () => {
+  const field = { grid: 4, cells: new Uint8Array(64), quantise: {}, flag: 'SIMULATED' };
+  assert.equal(cellIdentity({ field, cellIndex: 21 }).id, 'lss:21');
+});
+
+test('the cell nearest the click wins, in pixels', () => {
+  // Two cells on screen: one at the click, one 40 px away.
+  const projected = new Float64Array([
+    0.0, 0.0, 0.5,   // dead centre
+    0.04, 0.0, 0.5,  // ~40 px right on a 1000 px wide view
+  ]);
+  const hit = nearestCellOnScreen(projected, { x: 0, y: 0 }, { width: 1000, height: 800 });
+  assert.equal(hit.index, 0);
+  assert.ok(hit.pixels < 1);
+});
+
+test('a click far from every cell picks nothing', () => {
+  const projected = new Float64Array([0.0, 0.0, 0.5]);
+  assert.equal(nearestCellOnScreen(projected, { x: 0.9, y: 0.9 }, { width: 1000, height: 800 }), null);
+});
+
+test('cells behind the camera are not pickable', () => {
+  const behind = new Float64Array([0.0, 0.0, -5]); // z < -1
+  const infront = new Float64Array([0.9, 0.9, 5]);  // z > 1
+  assert.equal(nearestCellOnScreen(behind, { x: 0, y: 0 }, { width: 1000, height: 800 }), null);
+  assert.equal(nearestCellOnScreen(infront, { x: 0, y: 0 }, { width: 1000, height: 800 }), null);
+});
+
+test('an empty layer picks nothing rather than throwing', () => {
+  assert.equal(nearestCellOnScreen(new Float64Array(0), { x: 0, y: 0 }, { width: 800, height: 600 }), null);
 });

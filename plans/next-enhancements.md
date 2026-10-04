@@ -85,6 +85,30 @@ seeded random field, and the card says so.
 
 **Exit.** A click on visible structure names the cell and its density; a click on nothing clears it.
 
+**Status: done, 2026-10-05** — picking the tier happens in **screen space**, not by raycasting a
+world-space threshold. That change was forced by a measurement: the tier draws one point per 10 Mpc
+cell across a 500 Mpc ball, and in the browser a 12 Mpc ray threshold returned **0 hits** at the centre
+of the screen while a 120 Mpc one returned 25. Any threshold tight enough to be honest misses almost
+every click, and any threshold that hits picks the wrong neighbour. Projecting the drawn cells and
+taking the nearest within 16 px asks the question that has a real answer — *what did you point at*.
+
+The card leads with what the cell **is not**: not a galaxy, not a void, not an overdensity. It reports
+its grid position, its quantised value against the declared floor and ceiling, and the method that
+produced it — *Gaussian random field, ΛCDM-like linear matter power spectrum*.
+
+Verified live: a centre click at 200 Mpc names `lss:446880` and the card reads *quantised value 128
+(floor 0.35, ceiling 4.5)*. At 5000 Mpc it names a coarse-level cell and the drawn count reads 6,163
+rather than 49,410 — the card reports the level actually on screen. Four of six clicks on bare sky
+cleared the selection; the other two landed within 16 px of a cell, which is the correct answer rather
+than a miss. Star picking is unaffected.
+
+**Two defects found on the way, both invisible to the suite.** The layer compacted its geometry
+without recording which field cell each vertex came from, so a pick could not be mapped back at all;
+`cellIndices` now travels with the layer. And `dropStaleSelection` — written to stop a card naming a
+star the LOD had dropped — cleared *any* selection when no stars were drawn, which is every viewpoint
+past 1 Mpc. It now only drops star selections, so a picked cell survives at a scale with no stars in
+it.
+
 ---
 
 ## E9 — Captions for the cinematic holds

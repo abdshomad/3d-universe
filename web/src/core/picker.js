@@ -61,3 +61,75 @@ export function identityAt({ tile, index, originMetres = [0, 0, 0] }) {
     provenance: `${tile.header.provenance.catalog} ${tile.header.provenance.release} · U3DTILE2 · measured`,
   };
 }
+
+/**
+ * What a clicked cell is: a quantised value in a seeded random field.
+ *
+ * Deliberately not "an overdensity" or "a void" — those are units that imply a
+ * survey found something. This is one number from a generator, and the card says
+ * exactly that.
+ */
+export function cellIdentity({ field, cellIndex }) {
+  if (!field || !Number.isInteger(cellIndex)) return null;
+  if (cellIndex < 0 || cellIndex >= field.cells.length) return null;
+
+  const grid = field.grid;
+  const side = Math.floor(cellIndex / (grid * grid));
+  const row = Math.floor(cellIndex / grid) % grid;
+  const column = cellIndex % grid;
+  const quantised = field.cells[cellIndex];
+
+  return {
+    kind: 'field',
+    // Every selection carries an id, so a picked cell can be shared and exported
+    // the same way a star can.
+    id: `lss:${cellIndex}`,
+    name: 'Large-scale structure',
+    radiusMpc: field.radiusMpc,
+    cellMpc: field.cellMpc,
+    grid: field.grid,
+    seed: field.seed,
+    flag: field.flag,
+    provenance: `generated · ${field.flag} · ${field.scienceReference} is the science reference, not the source`,
+    cell: {
+      index: cellIndex,
+      x: column,
+      y: row,
+      z: side,
+      quantised,
+      floor: field.quantise?.floor ?? null,
+      ceiling: field.quantise?.ceiling ?? null,
+      method: field.method ?? null,
+    },
+  };
+}
+
+/**
+ * The cell drawn nearest the click, in pixels.
+ *
+ * A world-space ray threshold is the wrong tool here: the tier draws one point
+ * per 10 Mpc cell across a 500 Mpc ball, so any threshold tight enough to be
+ * honest misses almost every click and any threshold that hits picks the wrong
+ * neighbour. Screen space is where "you pointed at that one" is a question with
+ * a real answer.
+ *
+ * @param {Float64Array|number[]} projected flat x,y,z triples in NDC, z in [-1,1]
+ * @param {{x: number, y: number}} clickNdc
+ */
+export function nearestCellOnScreen(projected, clickNdc, { width, height, maxPixels = 16 } = {}) {
+  let best = -1;
+  let bestPixels = Infinity;
+  for (let i = 0; i < projected.length / 3; i += 1) {
+    const z = projected[3 * i + 2];
+    if (z < -1 || z > 1) continue; // behind the camera, or past the far plane
+    const dx = ((projected[3 * i] - clickNdc.x) * width) / 2;
+    const dy = ((projected[3 * i + 1] - clickNdc.y) * height) / 2;
+    const pixels = Math.hypot(dx, dy);
+    if (pixels < bestPixels) {
+      bestPixels = pixels;
+      best = i;
+    }
+  }
+  if (best < 0 || bestPixels > maxPixels) return null;
+  return { index: best, pixels: bestPixels };
+}

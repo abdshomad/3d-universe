@@ -129,7 +129,22 @@ export function cardForField(field, { pointCount } = {}) {
     ['grid', `${field.grid ?? 0}³`],
     ['cells drawn', formatNumber(drawn, 0)],
     ['seed', String(field.seed ?? '—')],
+    ...cellRows(field.cell),
   ], field.provenance ?? `generated · ${field.flag ?? 'SIMULATED'}`);
+}
+
+/**
+ * Rows for a cell the viewer actually clicked. The wording is the point: a
+ * quantised value from a seeded field, not an overdensity a survey measured.
+ */
+function cellRows(cell) {
+  if (!cell) return [];
+  const grid = `x ${cell.x}, y ${cell.y}, z ${cell.z} of the grid`;
+  return [
+    ['clicked cell', `${grid} — index ${cell.index}`],
+    ['quantised value', `${cell.quantised} (floor ${cell.floor}, ceiling ${cell.ceiling})`],
+    ['this is', cell.method ?? 'a value from a seeded random field'],
+  ];
 }
 
 const BUILDERS = {

@@ -6,14 +6,20 @@
  * zero.
  */
 
-import { Raycaster, Vector2 } from 'three/webgpu';
+import { Raycaster, Vector2, Vector3 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
 import { attachPlanets, planetRows } from './data/exoplanets.js';
 import { figureCitation, figureStarPositions } from './data/figure-stars.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { Cinematic } from './core/cinematic.js';
-import { identityAt, isClick, pickFromHits } from './core/picker.js';
+import {
+  cellIdentity,
+  identityAt,
+  isClick,
+  nearestCellOnScreen,
+  pickFromHits,
+} from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
 import { createTierBudget } from './core/tier-budget.js';
 import { planesFromCamera } from './core/frustum.js';
@@ -27,6 +33,7 @@ import { anglesFromDirection, directionFromAngles } from './core/view.js';
 import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
 import {
+  MPC_METRES,
   createLssLayer,
   fadeForView,
   levelForView,
@@ -546,14 +553,49 @@ function pickAt(clientX, clientY) {
     distance: hit.distance,
   }));
   const best = pickFromHits(hits, { tileId: starIndex.tile.header.tile_id });
-  if (!best) return null;
-  const identity = identityAt({
-    tile: starIndex.tile,
-    index: best.index,
-    originMetres: atlas.origin.originMetres,
+  if (best) {
+    const identity = identityAt({
+      tile: starIndex.tile,
+      index: best.index,
+      originMetres: atlas.origin.originMetres,
+    });
+    if (identity) return { ...identity, world: starIndex.positions[best.index] };
+  }
+  return pickCellAt(ndc);
+}
+
+/**
+ * The modelled tier is pickable too, so a click on structure says what it hit.
+ * The layer's geometry is compacted, so a vertex index is mapped back through
+ * the cell list it was built from.
+ */
+function pickCellAt(ndc) {
+  const visible = lssLevels.find((layer) => layer.visible);
+  if (!visible || !lssField) return null;
+
+  const rect = canvas.getBoundingClientRect();
+  const positions = visible.geometry.attributes.position.array;
+  const count = visible.userData.cellIndices.length;
+  const projected = new Float64Array(count * 3);
+  const vertex = new Vector3();
+  for (let i = 0; i < count; i += 1) {
+    vertex.set(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
+      .project(atlas.camera);
+    projected[3 * i] = vertex.x;
+    projected[3 * i + 1] = vertex.y;
+    projected[3 * i + 2] = vertex.z;
+  }
+
+  const hit = nearestCellOnScreen(projected, ndc, {
+    width: rect.width,
+    height: rect.height,
   });
-  if (!identity) return null;
-  return { ...identity, world: starIndex.positions[best.index] };
+  if (!hit) return null;
+  // The tier's own size, so the card still says how much of it is drawn.
+  return {
+    ...cellIdentity({ field: lssField, cellIndex: visible.userData.cellIndices[hit.index] }),
+    pointCount: visible.userData.pointCount,
+  };
 }
 
 /**
@@ -563,8 +605,13 @@ function pickAt(clientX, clientY) {
  */
 function dropStaleSelection() {
   if (atlas.stats.points > 0) return;
-  if (!cardSelection?.world && selection === null) return;
-  cardSelection = null;
+  // Only star selections go stale when the star set is dropped. A picked cell
+  // in the modelled tier is still drawn, and clearing it would mean the tier
+  // could never be interrogated from a viewpoint with no stars in it.
+  const isStarSelection = (candidate) => candidate
+    && (candidate.kind === 'star' || candidate.pointIndex !== undefined);
+  if (!isStarSelection(cardSelection) && selection === null) return;
+  if (isStarSelection(cardSelection)) cardSelection = null;
   selection = null;
   if (reticle) {
     atlas.scene.remove(reticle);

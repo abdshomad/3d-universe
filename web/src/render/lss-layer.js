@@ -44,6 +44,8 @@ export function parseField(header, cube) {
     cellMpc: header.cell_mpc,
     flag,
     seed: header.dataset?.seed,
+    method: header.dataset?.method,
+    quantise: header.quantise,
     scienceReference: header.dataset.science_reference,
   };
 }
@@ -154,6 +156,10 @@ export function createLssLayer(field, {
     threshold,
     stride,
     opacity,
+    // The geometry is compacted to the cells worth drawing, so a vertex index
+    // is not a field index. A pick needs the way back.
+    cellIndices: kept,
+    quantise: field.quantise,
     scienceReference: field.scienceReference,
     radiusMpc: field.radiusMpc,
     honesty: field.header.dataset.honesty,
