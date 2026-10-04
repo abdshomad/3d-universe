@@ -19,8 +19,10 @@ import { Backdrop } from './render/backdrop.js';
 import { anglesFromDirection, directionFromAngles } from './core/view.js';
 import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
+import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 
 const TILE_DIR = '../assets/tiles';
+const RELATION_DIR = '../assets/relations/constellations.json';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
 let routeTime = 0;
@@ -68,6 +70,11 @@ async function start() {
   for (const entry of manifest.tiles) {
     tree.addFromManifest(entry);
     tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
+  }
+  relationPayload = await loadJson(RELATION_DIR).catch(() => null);
+  if (relationPayload) {
+    const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
+    starIndex = new StarIndex(biggest.worldPositions);
   }
 
   atlas.rig.positionMetres = route.sample(0).positionMetres;
@@ -146,6 +153,9 @@ function redraw() {
 let nebulosity = null;
 let dustLayers = [];
 let mediumScale = 0;
+let relationPayload = null;
+let starIndex = null;
+let ribbons = [];
 
 /** The medium between the catalogue stars: noise-driven dust plus a far/near
  *  unresolved shell. Rebuilt with the star layers because they all share one
@@ -177,6 +187,30 @@ function rebuildMediums(scale) {
   atlas.stats.dustPoints = dustLayers.reduce(
     (total, layer) => total + layer.userData.pointCount, 0,
   );
+  rebuildRibbons(scale);
+}
+
+/** Ribbons between measured stars. Rebuilt with the medium because the
+ *  vertices live in render space; the star index itself never moves. */
+function rebuildRibbons(scale) {
+  for (const mesh of ribbons) {
+    atlas.scene.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+  ribbons = [];
+  if (!relationPayload || !starIndex) return;
+  const { meshes, report } = buildRelationRibbons({
+    relations: relationPayload.relations,
+    citation: relationPayload.citation,
+    index: starIndex,
+    widthMetres: scale * 0.004,
+    originMetres: atlas.origin.originMetres,
+    maxRibbons: 400,
+  });
+  for (const mesh of meshes) atlas.scene.add(mesh);
+  ribbons = meshes;
+  atlas.stats.relations = report;
 }
 
 /** Keep the depth range wrapped around what is actually on screen. */

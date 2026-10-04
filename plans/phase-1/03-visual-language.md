@@ -27,7 +27,12 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   `ingest/astro/photometry.py` and **verified against it** — the test runs the Python and compares to
   1e-6, so the tile and the screen cannot drift apart. Verified in a browser: 4,843 strided stars,
   112,791 lit pixels, flagged `MEASURED`.
-- [ ] `[TODO]` **Relations**: tapered Bézier ribbons, noise-modulated alpha, hue per relation type.
+- [x] **Relations**: `web/src/data/relations.js`, `web/src/render/ribbons.js`,
+  `web/src/render/relation-layer.js` and `ingest/sources/relations.py`. 89 constellation figures
+  ingested from d3-celestial with the source URL and retrieval date recorded; **an uncited relation
+  throws rather than draws**. Each figure end is attached to the nearest *measured* star within 0.35°,
+  and ends with no star are not drawn at all. Verified in a browser: 150 segments attempted, **77
+  ribbons drawn** from 154 matched ends against 60,000 indexed stars.
 - [ ] `[TODO]` **Reticles**: screen-space-width wireframe circles, tick arcs, crosshair, uncertainty
   ellipse around the selected object.
 - [ ] `[TODO]` **Spark markers**: colored `+` glyphs for transient/event objects (pulsar, FRB, GW).

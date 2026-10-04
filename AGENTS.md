@@ -100,3 +100,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   photometry and the claim "the tile and the screen agree" lived in a comment. Now the JS is a
   verified mirror of the Python: the test spawns python3 and compares magnitude to flux, size,
   B-V to temperature and RGB at 1e-6. 107/107 tests pass.
+- 2026-10-04 — `n` #17 (sub-plan 03): relation ribbons. Constellation figures are ingested from
+  d3-celestial with their URL and retrieval date, and `assertCited` refuses to draw anything
+  uncited. Figure ends attach to the nearest measured star within 0.35 degrees; 77 of 150 attempted
+  segments matched — the rest stay undrawn rather than pointing at nothing. 116/116 tests pass.

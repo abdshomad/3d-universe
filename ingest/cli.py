@@ -22,6 +22,17 @@ from ingest.sources import gaia, imagery, sbdb
 from ingest.verify import verify_dir
 
 
+def _run_relations(args: argparse.Namespace) -> int:
+    from ingest.sources.relations import write_relations
+
+    path = write_relations(args.out)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    citation = payload["citation"]
+    print(f"{payload['count']} relations -> {path}")
+    print(f"source: {citation['dataset']} ({citation['url']})")
+    return 0
+
+
 def _parse_cone(value: str | None) -> tuple[float, float, float] | None:
     if not value:
         return None
@@ -154,6 +165,12 @@ def build_parser() -> argparse.ArgumentParser:
     verify_parser = sub.add_parser("verify", help="check tiles against their catalog")
     verify_parser.add_argument("--dir", default=DEFAULT_DIR)
     verify_parser.set_defaults(func=_run_verify)
+
+    relations_parser = sub.add_parser("relations", help="constellation figures with citations")
+    relations_parser.add_argument(
+        "--out", default="assets/relations/constellations.json"
+    )
+    relations_parser.set_defaults(func=_run_relations)
 
     return parser
 
