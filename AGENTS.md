@@ -1,5 +1,6 @@
 Always refactor source code into several smaller files, each under 256 LOC.
-Always update this file and `git commit` it after a task is completed.
+Always update this file, then `git commit` and `git push` to
+`https://github.com/abdshomad/3d-universe.git` after a task is completed.
 
 ## Plans
 
