@@ -11,6 +11,7 @@ import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
 import { attachPlanets, planetRows } from './data/exoplanets.js';
 import { sampleIntegrity } from './core/integrity.js';
+import { Cinematic } from './core/cinematic.js';
 import { identityAt, isClick, pickFromHits } from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
 import { createTierBudget } from './core/tier-budget.js';
@@ -55,9 +56,19 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (key === 'escape') {
+    stopCinematic('escape');
     guide.dismiss();
     document.activeElement?.blur?.();
     return;
+  }
+  if (key === 'c' && document.activeElement?.id !== 'search') {
+    if (cinematic.active) stopCinematic('key');
+    else startCinematic();
+    return;
+  }
+  // Any flight input is an answer. No grace period.
+  if (cinematic.active) {
+    stopCinematic('key');
   }
   keys.add(key);
   if (key === 'j' && activeRoute !== journeyRoute) switchRoute(journeyRoute, 'guided journey');
@@ -98,6 +109,7 @@ const atlas = new AtlasScene({ canvas, aspect: 1 });
 
 let pointerDown = null;
 canvas.addEventListener('pointerdown', (event) => {
+  stopCinematic('pointer');
   pointerDown = { x: event.clientX, y: event.clientY, time: performance.now() };
 });
 canvas.addEventListener('pointerup', (event) => {
@@ -238,7 +250,17 @@ async function start() {
       cardSelection = null;
     }
 
-    if (freeFlight) {
+    if (cinematic.active) {
+      const step = cinematic.update(delta) ?? cinematic.current;
+      if (step) {
+        const previous = cinematic.steps[Math.max(0, cinematic.index - 1)] ?? step;
+        const phase = cinematic.holding ? 1 : cinematic.stepPhase;
+        atlas.rig.positionMetres = [0, 1, 2].map((axis) => previous.positionMetres[axis]
+          + (step.positionMetres[axis] - previous.positionMetres[axis]) * phase);
+        atlas.rig.lookAtAngles(step.yaw, step.pitch);
+        atlas.stats.waypoint = `cinematic · ${step.id}`;
+      }
+    } else if (freeFlight) {
       atlas.rig.resetDrift();
       atlas.rig.positionMetres = flight.step(delta, atlas.rig.positionMetres);
       if (motion.drift) atlas.rig.lookAtAngles(atlas.rig.baseYaw, atlas.rig.basePitch);
@@ -361,6 +383,58 @@ let nebulosity = null;
 let dustLayers = [];
 let mediumScale = 0;
 let relationPayload = null;
+/**
+ * The cinematic path, read off the route we already fly: each waypoint as it is
+ * first reached, with a hold so the eye can catch up with the scale.
+ */
+function buildCinematicSteps() {
+  const arrivals = [];
+  let lastName = null;
+  let quiet = 0;
+  for (let t = 0; t <= 240 && quiet < 8; t += 0.25) {
+    const shot = route.sample(t);
+    if (shot.name !== lastName) {
+      arrivals.push({ t, shot });
+      lastName = shot.name;
+      quiet = 0;
+    } else {
+      quiet += 0.25;
+    }
+  }
+  return arrivals.map(({ t, shot }, index) => {
+    const angles = anglesFromDirection(shot.lookDirection);
+    const previous = index === 0 ? 0 : arrivals[index - 1].t;
+    return {
+      id: shot.name,
+      travel: Math.max(1, t - previous),
+      hold: 5,
+      positionMetres: shot.positionMetres,
+      yaw: angles.yaw,
+      pitch: angles.pitch,
+    };
+  });
+}
+
+const cinematic = new Cinematic(buildCinematicSteps());
+
+/** Reduced motion means this is never offered, not merely discouraged. */
+function startCinematic() {
+  // Checked live, not only at load: the preference can change mid-session, and
+  // this mode moves the camera on its own.
+  if (motion.reduced || prefersReducedMotion() || cinematic.steps.length === 0) return false;
+  cinematic.start();
+  guide.record('cinematic');
+  document.body.classList.add('cinematic');
+  freeFlight = false;
+  return true;
+}
+
+function stopCinematic(action = 'dismissed') {
+  if (!cinematic.dismiss(action)) return false;
+  document.body.classList.remove('cinematic');
+  return true;
+}
+
 let exoplanetReport = null;
 let exoplanetPayload = null;
 let starIndex = null;

@@ -69,3 +69,12 @@ test('the key bindings are described from one source', () => {
   assert.match(described, /w\/↑ fly out/);
   assert.match(described, /escape dismiss hints/);
 });
+
+test('the policy says whether it is a reduced-motion policy', () => {
+  // A caller that asks `motion.reduced` must get a boolean, not undefined: an
+  // always-undefined guard is a guard that never fires.
+  assert.equal(motionPolicy({ reduced: true }).reduced, true);
+  assert.equal(motionPolicy({ reduced: false }).reduced, false);
+  assert.equal(motionPolicy().reduced, false);
+  assert.equal(motionPolicy({ reduced: true }).autoPlayRoute, false);
+});

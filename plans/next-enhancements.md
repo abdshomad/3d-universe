@@ -85,19 +85,35 @@ formatted and then silently discarded — the export looked complete and was not
 
 ## E6 — Cinematic auto-fly
 
-**Why now.** Locked decision 5 puts an *optional cinematic auto-fly mode* in v1. Every other part of
-that decision is shipped: the guided journey, the authored opening, free flight, deep links. This is
-the one promise in the locked decisions that no code implements yet.
+**Status: done, 2026-10-05** — `web/src/core/cinematic.js` is a timing state machine, not a camera
+system: it walks the poses the scale-out route already produces — sol, nearby-stars,
+neighbourhood, open-cluster-scale, kpc — and adds the one thing the route lacks, a **5-second hold at
+each scale** so the eye can catch up with what it has just flown into.
 
-**Scope.** A mode, off by default and never taken from the viewer without consent, that flies the
-existing journey with the HUD quiet, the framing composed, and a hold at each scale so the eye can
-catch up. It drives the machinery that exists rather than adding a camera system.
+It is started by `c`, described from the single `KEY_BINDINGS` source, and it is off by default. The
+chrome drops to 0.18 opacity and the cursor disappears; the honesty **badge stays at 0.6**, because a
+viewer who cannot read whether the sky is measured has been taken from rather than shown to.
 
-**Invariant that matters.** It must be interruptible. A viewer who touches anything takes the sky
-back immediately, because a cinematic mode that traps the pointer is the failure this project's
-whole premise argues against — the observer is the point.
+**Interruptible, absolutely.** Any key, any pointer gesture, or Escape returns the sky on the same
+frame. There is no grace period and no confirmation, because a viewer who touches the controls has
+already answered the question.
 
-**Exit.** It runs, it yields on any input, and reduced-motion users are never handed it.
+Verified live: idle → `c` starts it (waypoint reads `cinematic · sol`, readout at 0.18) → `w` returns
+the sky → a click returns it → Escape returns it. Under emulated `prefers-reduced-motion: reduce`,
+`c` does nothing at all, twice.
+
+**Two bugs, and the second is the one to remember.** `Cinematic.dismiss()` returned nothing, so
+`stopCinematic` bailed on its own guard and the HUD stayed dimmed with nothing running — the first
+browser run showed `cinematic: true` and `opacity: 0.18` long after the mode had ended.
+
+The second: `motionPolicy()` never exposed a `reduced` field, so `motion.reduced` was `undefined`,
+the guard in `startCinematic` was always falsy, and **the mode started for the exact viewers it was
+written to protect**. Every test passed, because the policy's own tests never asked whether it said
+what it was. A guard reading an always-undefined property is a guard that never fires, and it looks
+exactly like a feature working. The policy now carries `reduced`, the preference is re-checked live
+rather than only at load, and a test asserts the field is a boolean.
+
+275 node tests pass, 11 of them new.
 
 ---
 

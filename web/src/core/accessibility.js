@@ -44,6 +44,9 @@ export function meetsAA(foreground, background, { large = false } = {}) {
  */
 export function motionPolicy({ reduced = false } = {}) {
   return {
+    // The policy says whether it is a reduced-motion policy, so callers can ask
+    // the one object rather than re-deriving it — and get it right.
+    reduced,
     autoPlayRoute: !reduced,
     drift: !reduced,
     onboarding: true,
@@ -71,6 +74,7 @@ export const KEY_BINDINGS = [
   { keys: ['q', 'e'], action: 'descend / rise' },
   { keys: ['shift'], action: 'faster' },
   { keys: ['j'], action: 'guided journey' },
+  { keys: ['c'], action: 'cinematic auto-fly' },
   { keys: ['r'], action: 'scale-out route' },
   { keys: ['/'], action: 'focus search' },
   { keys: ['escape'], action: 'dismiss hints' },

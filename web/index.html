@@ -65,6 +65,13 @@
          canvas behind them. */
       #search, #export, #epoch { pointer-events: auto; }
 
+      /* Cinematic: the chrome gets out of the way without disappearing, so a
+         viewer can still read the badge and knows how to take the sky back. */
+      body.cinematic #readout, body.cinematic #hint, body.cinematic #epoch-line,
+      body.cinematic #epoch, body.cinematic #export { opacity: 0.18; }
+      body.cinematic #badge { opacity: 0.6; }
+      body.cinematic { cursor: none; }
+
       #export { position: absolute; bottom: 18px; left: 16px; padding: 6px 11px;
         background: rgba(5, 6, 10, 0.55); border: 1px solid rgba(138, 143, 152, 0.22);
         color: var(--ink-dim); font: inherit; font-size: 9px; letter-spacing: 0.2em;
