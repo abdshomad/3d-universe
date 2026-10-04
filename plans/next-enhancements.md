@@ -28,11 +28,8 @@ Measured today: the NASA/ESA **VizieR** mirror of Hipparcos answers in **1.7 sec
 | **10″** | **874 (98%)** |
 | 30″ | 889 (100%) |
 
-**What that cost, at the time.** The layer covered a third of its segments instead of most of them,
-and the report said so rather than hiding it. That was the honest price *of the lookup we had* — and it
-was wrong to record it as a property of the figures. [E7](#e7--figure-stars-from-hipparcos-so-the-figures-are-drawn-between-named-stars)
-found the catalogue and recovered **149 of 150** segments at a worst match of 32.5″. The lesson is
-not "be honest about loss"; it is "check whether the loss is real before writing it down as truth".
+The cost looked permanent because nobody had asked whether it was real. The lesson from E4 is kept
+below, with the numbers that overturned it.
 
 **Scope.** Ingest the naked-eye Hipparcos set as its own provenance-carrying tile. Match each figure
 vertex to its star one-to-one, carry the measured parallax, and let the relation layer resolve
