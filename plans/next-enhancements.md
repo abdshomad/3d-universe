@@ -1,8 +1,8 @@
 # Next enhancements
 
-Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after E10–E12 closed, 2026-10-05.
-Two of these need no external data at all, which is the point: three catalogues were probed and found
-unreachable this cycle, and the next batch does not pretend otherwise.
+Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after E13–E15 closed, 2026-10-05.
+This cycle is about the whole rather than the parts: fifty tasks have verified features in isolation,
+and none of them has checked what a person actually does.
 
 **Completed:** [E1 picking](next-enhancements.md) · [E2 manifest
 integrity](next-enhancements.md) · [E3 download the slice](next-enhancements.md) · [E4 relation
@@ -10,139 +10,87 @@ honesty](next-enhancements.md) · [E5 exoplanet relations](next-enhancements.md)
 auto-fly](next-enhancements.md) · [E7 figure stars](next-enhancements.md) · [E8 tier
 picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 event
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
-round-trip](next-enhancements.md) — 321 node tests green.
+round-trip](next-enhancements.md) · [E13 relation picking](next-enhancements.md) · [E14 pulsar
+verification](next-enhancements.md) · [E15 journey captions](next-enhancements.md) — 329 node tests.
 
 ---
 
-## E13 — The relation layer becomes selectable
+## E16 — A first run, driven the way a person drives it
 
-**Why now.** Three layers in this atlas can be pointed at and interrogated: stars, modelled cells,
-events. Relations cannot. A constellation line is drawn between two named Hipparcos stars, under a
-citation, and clicking it does nothing — so the one layer whose entire content is a *claim about a
-relationship* is the one you cannot ask anything about. That is the same argument that justified E10,
-and it is not finished until the relations layer answers too.
+**Why now.** Fifty tasks have landed. Each one verified its own thing: the picker picks, the exporter
+exports, the captions appear, the budget defers. Nobody has sat with the atlas and gone *from the door
+to somewhere*, because that is the only path a viewer takes and it is the one path no test exercises.
 
-**Scope.** Click a ribbon, resolve which relation it belongs to, and show a card: the figure's name,
-its catalogue, and the two stars at its ends with their measured positions. For a double, the
-separation and the WDS number. The relation already carries its `relationType` and citation in
-`userData`, so the honest version of this is mostly plumbing — which is the sign it should have been done
-earlier.
+The evidence that this is a real gap rather than a ceremonial one: every bug this session that a unit
+test could not see was an **integration** bug. A stale `lssLayer` reference throwing inside the frame
+loop. `dropStaleSelection` clearing a selection chosen by a *different* layer. The card quoting
+`distance_pc` while the layer placed the spark with `distance_kpc`. Each was invisible until something
+drove the app and read what came out.
 
-**Invariant that matters.** A selected relation names both of its endpoints. A line that cannot say
-which two stars it joins is a mark on the sky, and it should not be selectable as though it were a
-statement.
+**Scope.** One continuous session, no shortcuts, exactly as a first-time visitor: land and read the
+opening; let the onboarding run; press `j` and let the journey fly; type a name and fly to it; click a
+star and a cell and an event; export the slice; copy the link and open it cold in a fresh page. Every
+step must leave the app in a state the next step can use.
 
-**Exit.** A click on a drawn line names the relation, its source, and its two endpoints.
-**Status: done, 2026-10-05** — ribbons are picked in screen space, like the modelled cells: a line a
-few pixels wide cannot be raycast honestly, so the curve is projected and the nearest point within
-14 px is the pick. The star index now carries the id of every star it holds, and a ribbon records the
-two ends it joins — a line that cannot say which two stars it connects is a mark on the sky, and it
-should not be selectable as though it were a statement.
+**Invariant that matters.** Nothing in that path may depend on a previous step having happened. Cold
+start, every time — the second load of a URL is the one most viewers never do and therefore the one
+nobody tests.
 
-Verified live: clicking a line in Ursa Major selects `constellation:UMa` and the card reads **joins HIP
-54539 and HIP 50372**, *match quality 1.6″ — the worst of its two ends*, cited to Hipparcos via VizieR.
-A ribbon with an unnamed end reports that one end is not a catalogued star rather than claiming both.
-
+**Exit.** The whole sequence completes with no console errors, and every artefact it produces — the
+CSV, the link, the card — is the one a person asked for rather than the one a component happened to
+make.
 
 ---
 
-## E14 — The pulsar catalogue is verified, and its distances are labelled
+## E17 — The five catalogues that ship unverified
 
-**Why now.** `ingest verify` round-trips every baked *tile* id back to its catalogue. The event
-catalogue has never had that check, and looking at it closely turns up something worth knowing:
+**Why now.** Nine data assets ship. Four have a verifier — the manifest, the baked tiles, and now the
+events. **Five do not**:
 
-> Of **598** pulsars, **559** have distances derived from a dispersion measure. Only **39** have a
-> parallax.
+| asset | what depends on it |
+|---|---|
+| `landmarks/landmarks.json` | search, journey routing, the guided flight |
+| `search/nearby.json` | typing a name and being taken there |
+| `relations/constellations.json` | every figure drawn on screen |
+| `relations/figure-stars.json` | the endpoints those figures resolve to |
+| `relations/exoplanets.json` | 1,440 planets on 3,080 star cards |
 
-The atlas places every one of them in 3D using those numbers. The card says
-`distance from: dispersion-measure` on a row, which is honest and easy to miss — but the *layer* gives
-no hint that 93% of its spark positions rest on an estimate rather than a distance measurement.
+The event catalogue had exactly this gap and paid for itself immediately: 598 of 598 resolved, and the
+check found that 559 of the distances were dispersion-measure estimates nobody had noticed. **Five more
+assets are carrying the same unexamined assumption**, and one of them — the landmark set — decides where
+a search takes you.
 
-**Scope.** Two parts. Round-trip every pulsar id back to ATNF through VizieR's `B/psr/psr` — probed this
-session, answers in **1.3 seconds**, carrying `Name`, `RAJ2000`, `DEJ2000`, `Plx`, `DM`, `P0` — and
-refuse to ship a catalogue whose ids do not resolve. And make the estimate visible where it is used: the
-spark layer should distinguish a parallax distance from a dispersion-measure distance the way the LSS
-tier distinguishes measured from simulated, so a viewer who has not opened a card still knows.
+**Scope.** Extend the pattern rather than inventing a new one: for each asset, resolve every row back to
+the catalogue it claims, and report what does not. Where a source is unreachable from this host, say so
+with the receipt rather than skipping the check — the point is to know, not to pass.
 
-**Invariant that matters.** A DM-derived distance is an estimate with a real uncertainty, and the
-uncertainty grows with the square of the DM. Nothing in this layer may present one as a measured
-distance.
+**Invariant that matters.** An asset that cannot be verified against its source must say that in the
+file. A catalogue that cannot be checked is not the same thing as one that has been checked and passed.
 
-**Exit.** Every pulsar id resolves against ATNF; the layer distinguishes measured from estimated
-distances, and says how many of each it is drawing.
-**Status: done, 2026-10-05** — `ingest/verify_events.py` round-trips every pulsar back to ATNF through
-VizieR's `B/psr/psr`, in about a second.
-
-> **598 of 598 resolve.** Every id in the atlas traces back to a catalogue row.
-
-The interesting part was the check I expected to fire and did not. The verifier reports any pulsar
-recorded as dispersion-measure whose ATNF row *does* carry a parallax — a measured distance available
-and left unused. **It found none.** The ingest is not under-using measurements; those 559 really do have
-no parallax in the catalogue. Six pytest tests cover the branch, so the zero is a result rather than a
-silent no-op.
-
-**What is now visible in the layer.** A parallax distance draws a filled cross; a dispersion-measure
-distance draws a **hollow ring** — shape rather than colour, so it survives being small and being
-colour-blind. 544 hollow, 39 filled.
-
-**A fourth number the stats did not have.** 598 catalogued, 583 drawn, **15 with no distance at all**
-and never drawn. The HUD said "events" and meant the catalogue size, which did not add up to anything
-else on screen. Now: `catalogued = drawn + unplaced`, and `drawn = measured + estimated`, both verified
-to close.
-
+**Exit.** Every shipped asset either verifies against its source or records why it cannot, and the
+count of unresolved rows is a number someone has looked at.
 
 ---
 
-## E15 — Captions for the guided journey
+## E18 — Re-measure, or stop claiming
 
-**Why now.** E9 gave the cinematic a caption for every hold and ended the "emptiest five seconds in the
-product". The *other* fly-through — the `j` guided journey, which is what most viewers actually watch —
-still holds in silence at each scale. Half the fix is already written; the copy is derived from radii.
+**Why now.** Every performance figure recorded in the plans was measured before this host's disk filled.
+The atlas currently renders at **4.3 fps** here, where it measured **60 fps** when healthy. So the
+recorded claims — *60 fps with the tier drawn and 60 with it hidden, a 0.01 ms difference*, *0.1 ms to
+parse 884,736 bytes*, *cold start to the local tier under 5 s* — cannot be reproduced on this machine
+today, and nothing in the repository would notice if they had quietly become false.
 
-**Scope.** The same `captionFor` the cinematic uses, applied to the journey's holds. No new copy, no new
-mechanism — the same discipline, in the place more people will see it.
+That is the one kind of claim in this project that no test guards: the test suite proves the code
+behaves, not that it is fast.
 
-**Invariant that matters.** One source of scale copy. Two implementations of the same sentence will
-drift, and a caption that contradicts another caption is worse than no caption.
+**Scope.** Make the numbers checkable rather than remembered. One command that reports frame rate,
+tier cost, parse cost and cold start, writing its output somewhere a person reads it. Then re-measure,
+and correct the plans wherever the machine's answer differs from what is written — including if the
+answer is "this is slower than we said".
 
-**Exit.** Every journey hold shows the caption the cinematic would show for that scale.
-**Status: done, 2026-10-05** — one `showCaption` writer, two callers: the cinematic and the guided
-routes. `captionFor` remains the only source of these sentences, so the two cannot drift apart.
+**Invariant that matters.** A recorded number carries the machine and the conditions it was measured on.
+"60 fps" without them is a story, and this project's whole argument is that a story is not a
+measurement.
 
-Verified live on the guided journey, each waypoint naming itself:
-
-> sol — *0.0001 parsec is 21 astronomical units: from out here the Sun and its planets are a speck.*
-> Alpha Centauri A — *is 1.35 parsecs, 4.4 light years away. Its distance is a measured parallax.*
-> Barnard's Star — *is 1.82 parsecs, 5.9 light years away. Its distance is a measured parallax.*
-
-**The copy was wrong in a way only flying it could show.** The sub-50 pc caption opened with *The
-nearest star system, Alpha Centauri, is 4.2 light years away* — true, and written for the scale-out
-route where you are looking outward at it. Printed under a caption about Barnard's Star, and again
-under Sirius, it was true and beside the point. A caption is a claim about **the thing it is
-captioning**, and this one had been silently generalising.
-
-The fix is context, not a second sentence: a step carrying a name says what *that* place is and how far
-it is. The outward-looking clause stays where it belongs. That is the invariant earning its keep — one
-implementation, used in a context it was not written for, was the drift.
-
-
----
-
-## Not now, and why — with receipts
-
-Three catalogues were probed this cycle and found unreachable from this host. None of them is a guess;
-each was measured, and each belongs in the record so nobody re-derives it next cycle.
-
-- **Fast radio bursts (frbtheorycat).** Every export URL returns the site's Joomla HTML rather than
-  CSV: `?task=export.format=csv&type=csv` → 71,688 bytes of `<!DOCTYPE html>`, and two alternates the
-  same or a 404. The endpoint has moved or changed its parameters.
-- **Gravitational-wave events (GWOSC).** The site root answers 200, and every API path 404s with an
-  HTML page: `/api/events/GWTC-1-confident/`, `/api/v2/events/`, and the trailing-slash variant all.
-  A 301 on one path resolves to that same 404.
-- **Gaia DR3 (ESA).** Unchanged: three probes, the smallest a third of a degree across, nothing in
-  90–120 seconds.
-
-The event layer's code already draws `frb` and `gravitational_wave` kinds, so when either endpoint
-answers this is a data change and nothing else. VizieR worked for everything this cycle — Hipparcos for
-the figures, WDS for the doubles, and ATNF for E14 — which is the argument for treating it as the
-default mirror rather than a fallback.
+**Exit.** One command reports the current numbers, the plans carry figures that match it, and any
+figure that cannot be re-measured says so where it is stated.
