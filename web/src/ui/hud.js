@@ -9,6 +9,10 @@
  * anything that grows past that is the scene's fault, not the HUD's.
  */
 
+import { cardFor, cardForStar, formatDistance } from './fact-card.js';
+
+export { cardFor, cardForLandmark, cardForEvent, cardForStar, formatDistance } from './fact-card.js';
+
 export const NAV_ITEMS = ['ATLAS', 'ROUTE', 'TIERS', 'PROVENANCE'];
 
 export const PRECEDENCE = ['SIMULATED', 'UNRESOLVED', 'MEASURED'];
@@ -16,34 +20,6 @@ export const PRECEDENCE = ['SIMULATED', 'UNRESOLVED', 'MEASURED'];
 /** What the badge should say, given which kinds of content are present. */
 export function provenanceBadge(flags = {}) {
   return PRECEDENCE.find((flag) => flags[flag]) ?? 'EMPTY';
-}
-
-function formatDistance(pc) {
-  if (pc === null || pc === undefined) return '—';
-  if (pc < 1) return `${(pc * 206265).toFixed(1)} AU`;
-  if (pc < 1000) return `${pc.toFixed(2)} pc`;
-  if (pc < 1e6) return `${(pc / 1000).toFixed(2)} kpc`;
-  return `${(pc / 1e6).toFixed(1)} Mpc`;
-}
-
-function formatMagnitude(value) {
-  return value === null || value === undefined ? '—' : value.toFixed(2);
-}
-
-/** Rows for the fact card of a measured star. */
-export function starFactCard(selection) {
-  if (!selection) return null;
-  return {
-    name: selection.name ?? `gaia ${selection.id}`,
-    rows: [
-      ['catalogue id', selection.id],
-      ['distance', formatDistance(selection.distancePc)],
-      ['apparent mag', formatMagnitude(selection.magnitude)],
-      ['colour index B-V', formatMagnitude(selection.colorIndex)],
-    ],
-    provenance: selection.provenance ?? 'esa.gaia DR3 · U3DTILE2 · measured',
-    image: selection.image ?? null,
-  };
 }
 
 /**
@@ -59,7 +35,7 @@ export function hudModel(state = {}) {
     title: '3D UNIVERSE',
     subtitle: 'a provenance-honest atlas',
     nav: [...NAV_ITEMS],
-    factCard: starFactCard(selection),
+    factCard: selection ? cardFor(selection) : null,
     readout: {
       objects: stats.points ?? 0,
       distance: `${formatDistance(minPc)} – ${formatDistance(maxPc)}`,

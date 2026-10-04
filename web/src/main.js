@@ -79,6 +79,7 @@ function attachSearchBox() {
     }
     const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
     const path = flightPathTo(match, { fromPc });
+    cardSelection = { ...match, kind: 'landmark' };
     switchRoute(path, `flight to ${match.name ?? `HIP ${match.hip}`}`);
     result.textContent = `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`;
     atlas.stats.searchResult = match.id;
@@ -86,6 +87,7 @@ function attachSearchBox() {
 }
 
 function switchRoute(next, name) {
+  if (!name.startsWith('flight to')) cardSelection = null;
   activeRoute = next;
   activeRouteName = name;
   routeTime = 0;
@@ -162,7 +164,10 @@ async function start() {
     // Free flight takes over the moment a key is held: the route pauses and the
     // speed law applies unchanged from 1 AU to 100 kpc.
     flight.input(inputFromKeys(keys));
-    if (flight.engaged) freeFlight = true;
+    if (flight.engaged) {
+      freeFlight = true;
+      cardSelection = null;
+    }
 
     if (freeFlight) {
       atlas.rig.resetDrift();
@@ -434,11 +439,15 @@ function updateHud(now = performance.now()) {
   }));
 }
 
+let cardSelection = null;
+
 function hudSelection() {
   if (!selection || selection.pointIndex === undefined || !starIndex?.tile) return null;
   const tile = starIndex.tile;
   const index = selection.pointIndex;
+  if (cardSelection) return cardSelection;
   return {
+    kind: 'star',
     id: selection.id,
     distancePc: selection.world.length() / METRES_PER_PC,
     magnitude: tile.magnitudes ? tile.magnitudes[index] / 1000 : null,

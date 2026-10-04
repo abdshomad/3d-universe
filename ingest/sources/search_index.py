@@ -52,7 +52,11 @@ def attach_names(entries: list[dict[str, Any]], landmarks: dict[str, Any]) -> li
         landmark = by_hip.get(entry["hip"])
         if landmark:
             entry["name"] = landmark["name"]
-            entry["kind"] = landmark["kind"]
+            # "kind" belongs to the card dispatch, not to the star: a landmark
+            # description like "brightest star in the night sky" is not a kind.
+            entry["description"] = landmark["kind"]
+            entry["cross_check_arcsec"] = landmark["cross_check_arcsec"]
+            entry["parallax_error_mas"] = landmark["parallax_error_mas"]
     return entries
 
 

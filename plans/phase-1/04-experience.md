@@ -22,7 +22,11 @@ Depends on 03.
   Verified in a browser: "sirius" → route `flight to Sirius`, result line
   `Sirius · 2.637 pc · HIP 32349`, and the flight ends at 2.6371 pc — the measured distance.
   An unknown name answers "nothing found" rather than inventing a star.
-- [ ] `[TODO]` Fact card content per object kind: star, planet, galaxy, nebula, event.
+- [x] Fact card content per object kind — `web/src/ui/fact-card.js`, one implementation the HUD
+  shares. Star, landmark and event cards are live and verified in the browser: Sirius reads
+  `2.637 pc · parallax 379.21 ± 1.58 mas · cross-check 0.16″ vs SIMBAD`. Planet, galaxy and nebula
+  cards are **not** written — we hold no exoplanet, galaxy or nebula catalogue yet, and a card over
+  invented data is the failure this project exists to avoid. They arrive with their ingest.
 - [ ] `[TODO]` Light-travel-time scrubber: move the observer through epochs and watch the sky change.
 - [ ] `[TODO]` Onboarding: a 30-second opening that teaches flight without a tutorial wall.
 - [ ] `[TODO]` Accessibility: keyboard-only flight, reduced-motion mode, readable contrast for type.

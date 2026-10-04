@@ -139,3 +139,10 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   for. Verified live: 'sirius' flies to 2.6371 pc, the measured Hipparcos distance, and an unknown
   name answers 'nothing found' instead of inventing one. Paths may now run inward as well as
   outward, since a search can approach a nearby star from far away. 166/166 tests pass.
+- 2026-10-04 — `n` #26 (sub-plan 04): fact cards per object kind, as one implementation the HUD
+  shares rather than a second copy. Stars, landmarks and events are live: Sirius reads
+  '2.637 pc, parallax 379.21 ± 1.58 mas, cross-check 0.16" vs SIMBAD'. Planet, galaxy and nebula
+  cards are deliberately absent - we hold no such catalogue, and a card over invented data is the
+  failure this project exists to avoid. Two bugs the browser caught: a search entry's description
+  overwrote the card's kind and broke the dispatcher, and a missing cross-check rendered the word
+  'undefined' in a fact card. 174/174 tests pass.
