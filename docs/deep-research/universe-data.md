@@ -30,6 +30,21 @@ Verified reachable, with real payloads:
   FROM gaiadr3.gaia_source WHERE parallax > 10 AND phot_g_mean_mag < 8 ORDER BY parallax DESC
   → 762815470562110464, 165.83096, 35.94865, 392.75, 6.55, 2.2156   (2.55 pc)
   ```
+
+  **The mirror is a subsample, and that matters.** Measured on the same host:
+
+  | Query | Mirror | Gaia DR3 |
+  |---|---|---|
+  | stars with G < 8 | **62,723** | ~117 million |
+  | stars in a 36″ box at α Centauri A | **0** | thousands |
+
+  So roughly 0.05% of Gaia DR3 is served. Positions in a baked tile are
+  unbiased, and every tile we produce matches the mirror's own counts — but
+  *famous* nearby stars are usually absent, which is exactly what a guided
+  journey wants to visit. Landmarks therefore come from **Hipparcos**
+  (VizieR I/239/hip_main), which is complete and small: 118,218 rows, fetched
+  whole. Do not describe a baked tile as "the nearest N stars" — it is "N stars
+  from a ~0.05% sample of Gaia DR3".
 - **ESA Gaia Archive TAP** (ADQL, sync): unreliable from here. A `SELECT TOP 1` round-trip took
   ~36 s; the same filtered query exceeds 90 s; and the full filtered query returns after 10–42 s
   with an async `JOBID` and a VOTable containing **no `TABLEDATA`** — a job that would need

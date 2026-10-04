@@ -33,6 +33,24 @@ def _run_relations(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_landmarks(args: argparse.Namespace) -> int:
+    from ingest.sources.landmarks import write_landmarks
+
+    path = write_landmarks(args.out, cache=args.cache)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    citation = payload["citation"]
+    print(f"{payload['count']} landmarks -> {path}")
+    for landmark in payload["landmarks"]:
+        print(
+            f"  {landmark['name']:20s} HIP {landmark['hip']:<7d}"
+            f" {landmark['distance_pc']:9.3f} pc"
+            f"  plx={landmark['parallax_mas']:.2f} mas"
+            f"  cross-check {landmark['cross_check_arcsec']}\""
+        )
+    print(f"source: {citation['dataset']} ({citation['url']})")
+    return 0
+
+
 def _parse_cone(value: str | None) -> tuple[float, float, float] | None:
     if not value:
         return None
@@ -172,6 +190,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     relations_parser.set_defaults(func=_run_relations)
 
+    landmarks_parser = sub.add_parser("landmarks", help="verified landmarks with measured distances")
+    landmarks_parser.add_argument("--out", default="assets/landmarks/landmarks.json")
+    landmarks_parser.add_argument("--cache", default=None, help="reuse a downloaded Hipparcos TSV")
+    landmarks_parser.set_defaults(func=_run_landmarks)
     return parser
 
 

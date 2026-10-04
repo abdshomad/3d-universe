@@ -128,3 +128,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   d·e^(rate·t) rather than by Euler step, so two half-steps equal one whole step and the gain the
   HUD advertises is the gain you get. Verified in the browser: W grows the distance, the waypoint
   reads 'free flight' while the route is paused, Shift boosts about ten times. 149/149 tests pass.
+- 2026-10-04 — `n` #23 (sub-plan 04): landmarks with measured distances, from Hipparcos via VizieR,
+  cross-checked against SIMBAD to 0.11-0.99 arcsec. Chasing them exposed something bigger: the
+  Gaia@AIP mirror we have been baking from serves only ~0.05% of Gaia DR3 - 62,723 stars brighter
+  than G=8, and zero in the box containing Alpha Centauri A. Tiles are statistically fine but
+  unnamed stars are usually missing, so a journey built on our own tiles would fly past the
+  nearest star without it. Recorded in the research doc.
