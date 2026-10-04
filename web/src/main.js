@@ -25,10 +25,16 @@ import { METRES_PER_PC } from './core/units.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
 import { FlightController, inputFromKeys } from './core/flight-controls.js';
+import { journeyFromLandmarks } from './core/journey.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
-window.addEventListener('keydown', (event) => keys.add(event.key.toLowerCase()));
+window.addEventListener('keydown', (event) => {
+  const key = event.key.toLowerCase();
+  keys.add(key);
+  if (key === 'j' && activeRoute !== journeyRoute) switchRoute(journeyRoute, 'guided journey');
+  if (key === 'r' && activeRoute !== route) switchRoute(route, 'scale out');
+});
 window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
 
@@ -37,10 +43,14 @@ let reticle = null;
 let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
+const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
 let eventPayload = null;
 let sparkLayers = [];
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
+let journeyRoute = null;
+let activeRoute = route;
+let activeRouteName = 'scale out';
 let routeTime = 0;
 
 const canvas = document.getElementById('view');
@@ -51,6 +61,13 @@ window.__atlas = atlas;
 atlas.budget = budget;
 atlas.flight = flight;
 atlas.route = route;
+function switchRoute(next, name) {
+  activeRoute = next;
+  activeRouteName = name;
+  routeTime = 0;
+  atlas.route = next;
+  atlas.stats.route = name;
+}
 const backdrop = new Backdrop({
   fields: DEEP_FIELDS,
   urlFor: (field) => '../assets/imagery/' + field.file,
@@ -88,6 +105,11 @@ async function start() {
     tree.addFromManifest(entry);
     tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
   }
+  const landmarkPayload = await loadJson(LANDMARK_DIR).catch(() => null);
+  if (landmarkPayload?.landmarks?.length) {
+    journeyRoute = journeyFromLandmarks(landmarkPayload.landmarks);
+    atlas.journey = journeyRoute;
+  }
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);
 
@@ -118,12 +140,13 @@ async function start() {
       atlas.stats.waypoint = 'free flight';
     } else {
       routeTime += delta;
-      const shot = route.sample(routeTime);
+      const shot = activeRoute.sample(routeTime);
       atlas.rig.positionMetres = shot.positionMetres;
       // The route says where to face: a deep field, or outward along the route.
       const look = anglesFromDirection(shot.lookDirection);
       atlas.rig.lookAtAngles(look.yaw, look.pitch);
       atlas.stats.waypoint = shot.name;
+    atlas.stats.route = activeRouteName;
     }
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
     refreshViewRange();
