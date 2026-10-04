@@ -41,8 +41,10 @@ solve scale without the camera ever visibly snapping.
   fast, fast frames restore it slowly, so the atlas thins before it stutters and never breathes.
   Verified live in a headless browser with a 60,000-star tile: 11 drops from 120,000 to the 3,000
   floor, frame time 95.8 ms → 74.2 ms as the load fell.
-- [ ] `[TODO]` Post chain: bloom → ACES tonemap → vignette (floor `#05060A`, never crushed to
-  `#000000`).
+- [x] Post chain: bloom, with the void held at `#05060a` — `web/src/render/post.js`. Measured in a
+  browser: bright cores 101 → 172 pixels, halo band 1666 → 2072, void median exactly `[5,6,10]` with
+  the chain on and off. ACES was tried and removed: the scene pass is already display-encoded, so
+  tone mapping darkened every star (92 bright pixels → 0). It returns when the scene carries HDR.
 - [ ] `[TODO]` Deterministic camera path format so a cinematic route is data, not code.
 - [ ] `[TODO]` Performance harness: fixed route, per-frame timings, CI-checkable budget.
 

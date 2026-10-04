@@ -10,10 +10,11 @@
  * within a parsec is clipped and the frame comes out black.
  */
 
-import { Color, PerspectiveCamera, Scene, WebGPURenderer } from 'three';
+import { PerspectiveCamera, Scene, WebGPURenderer } from 'three';
 
 import { CameraRig } from '../core/camera-rig.js';
 import { FloatingOrigin } from '../core/floating-origin.js';
+import { PostChain } from './post.js';
 
 const DEFAULT_FOV = 60;
 const NEAR_SAFETY = 4;
@@ -24,7 +25,9 @@ export class AtlasScene {
   constructor({ canvas, fovDegrees = DEFAULT_FOV, aspect = 1 } = {}) {
     this.canvas = canvas;
     this.scene = new Scene();
-    this.scene.background = new Color(0x05060a);
+    // No scene background: the void is the page's #05060a, which no tone map or
+    // sRGB round trip can crush to black.
+    this.scene.background = null;
     this.camera = new PerspectiveCamera(fovDegrees, aspect, 1, FAR_CEILING);
     this.rig = new CameraRig();
     this.origin = new FloatingOrigin();
@@ -36,9 +39,10 @@ export class AtlasScene {
   }
 
   async init() {
-    this.renderer = new WebGPURenderer({ canvas: this.canvas, antialias: true, alpha: false });
+    this.renderer = new WebGPURenderer({ canvas: this.canvas, antialias: true, alpha: true });
     await this.renderer.init();
     this.stats.backend = this.renderer.backend?.isWebGPUBackend ? 'webgpu' : 'webgl2';
+    this.post = new PostChain({ renderer: this.renderer, scene: this.scene, camera: this.camera });
     return this;
   }
 
@@ -102,7 +106,7 @@ export class AtlasScene {
   frame(deltaSeconds) {
     this.rig.autoDrift(0.004).update(deltaSeconds);
     this.syncCamera();
-    this.renderer.render(this.scene, this.camera);
+    this.post.render(this.renderer, this.scene, this.camera);
     this._frames += 1;
     return this;
   }

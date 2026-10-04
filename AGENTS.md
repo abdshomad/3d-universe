@@ -65,3 +65,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
 - 2026-10-04 — `n` #9 (sub-plan 02): frame budget controller. The atlas sheds stars when frames run
   long and restores them slowly when they recover. Proven live against a 60,000-star tile under
   software rendering: 11 drops to the 3,000-point floor, frame time 95.8 ms to 74.2 ms.
+- 2026-10-04 — `n` #10 (sub-plan 02): post chain. Bloom lifts bright cores 101 to 172 pixels and the
+  halo band 1.7x, while the void stays exactly `#05060a` — a scene background colour is crushed to
+  black by the colour round trip, so the floor is applied last, in display space. ACES was measured
+  and rejected: the pass is already display-encoded, so it darkened every star instead of rolling
+  highlights off.
