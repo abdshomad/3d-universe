@@ -104,3 +104,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   d3-celestial with their URL and retrieval date, and `assertCited` refuses to draw anything
   uncited. Figure ends attach to the nearest measured star within 0.35 degrees; 77 of 150 attempted
   segments matched — the rest stay undrawn rather than pointing at nothing. 116/116 tests pass.
+- 2026-10-04 — `n` #18 (sub-plan 03): reticles — circle, tick arc, gapped crosshair and a rotated
+  uncertainty ellipse as line segments, which the GPU draws a pixel wide at any scale. The reticle
+  locks onto the nearest measured star to the view centre (Gaia 5262578111591082240 in the
+  browser check). Selection is centre-lock for now; click-picking belongs to sub-plan 04.
+  124/124 tests pass.

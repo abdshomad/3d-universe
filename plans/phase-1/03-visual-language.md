@@ -33,8 +33,10 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   throws rather than draws**. Each figure end is attached to the nearest *measured* star within 0.35°,
   and ends with no star are not drawn at all. Verified in a browser: 150 segments attempted, **77
   ribbons drawn** from 154 matched ends against 60,000 indexed stars.
-- [ ] `[TODO]` **Reticles**: screen-space-width wireframe circles, tick arcs, crosshair, uncertainty
-  ellipse around the selected object.
+- [x] **Reticles**: `web/src/render/reticles.js` — circle, tick arc, gapped crosshair and a rotated
+  uncertainty ellipse, drawn as line segments so the stroke is a screen-space pixel at every scale.
+  The reticle locks onto the nearest *measured* star to the view centre; verified in a browser on
+  Gaia `5262578111591082240`, one reticle in the scene, no console errors.
 - [ ] `[TODO]` **Spark markers**: colored `+` glyphs for transient/event objects (pulsar, FRB, GW).
 - [ ] `[TODO]` **HUD**: title lockup, thin top nav, fact card, boxed readout, provenance badge.
 - [ ] `[TODO]` **Camera grammar**: constant slow drift, exponential scale changes, no cuts.

@@ -20,8 +20,11 @@ import { anglesFromDirection, directionFromAngles } from './core/view.js';
 import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
+import { createReticle, worldWidthForPixels } from './render/reticles.js';
 
 const TILE_DIR = '../assets/tiles';
+let reticle = null;
+let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
@@ -75,6 +78,7 @@ async function start() {
   if (relationPayload) {
     const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
     starIndex = new StarIndex(biggest.worldPositions);
+    starIndex.tile = biggest;
   }
 
   atlas.rig.positionMetres = route.sample(0).positionMetres;
@@ -188,6 +192,59 @@ function rebuildMediums(scale) {
     (total, layer) => total + layer.userData.pointCount, 0,
   );
   rebuildRibbons(scale);
+  rebuildReticle();
+}
+
+/** Nearest measured star to the view centre: the object the reticle locks onto. */
+function selectNearestToView(direction, maxAngleDeg = 6) {
+  if (!starIndex) return null;
+  const limit = Math.cos((maxAngleDeg * Math.PI) / 180);
+  let best = -Infinity;
+  let bestIndex = -1;
+  for (let i = 0; i < starIndex.size; i += 1) {
+    const dot = starIndex.directions[3 * i] * direction[0]
+      + starIndex.directions[3 * i + 1] * direction[1]
+      + starIndex.directions[3 * i + 2] * direction[2];
+    if (dot > best) {
+      best = dot;
+      bestIndex = i;
+    }
+  }
+  if (bestIndex < 0 || best < limit) return null;
+  const id = starIndex.tile?.ids?.[bestIndex];
+  return { world: starIndex.positions[bestIndex], id: id === undefined ? null : id.toString() };
+}
+
+/** The annotation around the selected object, sized in screen space. */
+function rebuildReticle() {
+  if (reticle) {
+    atlas.scene.remove(reticle);
+    reticle.geometry.dispose();
+    reticle.material.dispose();
+    reticle = null;
+  }
+  const direction = directionFromRig(atlas.rig);
+  selection = selectNearestToView(direction);
+  atlas.stats.selection = selection?.id ?? null;
+  if (!selection) return;
+
+  const render = [
+    selection.world.x - atlas.origin.originMetres[0],
+    selection.world.y - atlas.origin.originMetres[1],
+    selection.world.z - atlas.origin.originMetres[2],
+  ];
+  const distance = Math.hypot(...render);
+  const radius = worldWidthForPixels(distance, 26, atlas.camera.fov, canvas.clientHeight || 800);
+  reticle = createReticle({
+    position: render,
+    distance,
+    radius,
+    tickCount: 16,
+    crosshairSize: radius * 1.25,
+    uncertainty: { semiMajor: radius * 0.42, semiMinor: radius * 0.16, rotationDeg: 24, segments: 32 },
+    label: selection.id ?? 'nearest star',
+  });
+  atlas.scene.add(reticle);
 }
 
 /** Ribbons between measured stars. Rebuilt with the medium because the
