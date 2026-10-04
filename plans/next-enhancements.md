@@ -1,133 +1,92 @@
 # Next enhancements
 
-Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after sub-plan 05 closed,
-2026-10-04. Three enhancements, each with an exit criterion a browser can falsify. Ordered by how
-much they close the project's stated promises — not by how easy they are.
+Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after E1–E3 closed,
+2026-10-05. Ordered by what most endangers the project's central claim, not by what is easiest.
+
+**Completed:** [E1 object picking](next-enhancements.md) · [E2 manifest
+integrity](next-enhancements.md) · [E3 download the slice](next-enhancements.md) — all shipped
+2026-10-04, 247 node tests green. Those three remain recorded in the history below.
 
 ---
 
-## E1 — Object picking: click a light, read its card
+## E4 — Constellation vertices must resolve to a measured star
 
-**Why now.** PRD core feature 7 says *every selection shows a fact card*. Today a selection only
-exists after you type a name: search resolves a HIP, the route flies there, the card appears. A
-click — the most natural gesture in a 3D atlas — does nothing. I deferred this while building the
-cards, and it is now the largest gap between what the PRD promises and what the app does.
+**Why now.** PRD feature 4 says every edge is a cited relation, and the citation is there:
+`d3-celestial`, derived from Stellarium. But the *vertices* are not catalogue rows. Each of the 89
+figures is a list of raw RA/Dec pairs, and the layer draws a line between positions that resolve to
+nothing in any tile. This is the same defect class as the stale card that named an undrawn star, and
+it is shipped in every session.
 
-**Scope.** A raycast against the star layers and the spark layers, resolving a hit to a catalog
-identity, setting the reticle, and routing the card. Hover is out of scope: click only, so the
-gesture is unambiguous while flight controls are live.
+Measured today: **893 vertices across 89 figures. 339** have a measured star within 10″ of the
+position the figure gives them; **554 do not**, with a median separation of 138″ and a tail out to
+degrees. Constellation figures span the whole sky, and most of their stars sit far outside the
+200 pc neighbourhood tile we bake.
 
-**Invariant that matters.** A pick resolves through the same tile and star index the search box
-builds from, and produces the same identity shape. If a click can name a star the search box
-cannot, or the two disagree about its distance, they disagree about identity — which is precisely
-the bug class this project exists to prevent.
+**Scope.** Ingest the figure stars as a real, provenance-carrying set rather than trusting
+coordinates: query the catalogue for the stars at the figure positions, match each vertex to the
+row it names, and bake them with their measured parallaxes. A vertex with no measured match is
+either dropped or badged — never drawn as though it were measured.
 
-**Exit.** A click names the star under the cursor, pins the reticle to it, and shows its card;
-where no star is drawn, nothing is claimed. Verified in the browser, both ways.
+**Invariant that matters.** A figure line is drawn between two *measured* stars or not at all. If
+the vertex set and the star set can drift apart, the layer will quietly start drawing lines to
+positions again, and nothing will notice.
 
-**Status: done, 2026-10-04** — `web/src/core/picker.js` holds the decisions (click vs drag, which
-hit wins, what a hit *is*), and `main.js` owns only the raycast. The threshold is what four pixels
-are worth at the depth of the object under the reticle, so a pick is neither easier nor harder at
-one scale than another. Verified live at 10 pc among 72,219 stars: a centre click selected
-GAIA 2739689239311660672 at 4.118 pc — a *nearer* star than the reticle's 85.9 pc candidate, which
-is the whole point of clicking rather than centring. The pick pins: steering the view away, and the
-LOD dropping to 3,000 points, leaves the reticle and the card on the star that was clicked. A drag
-picks nothing. Ten tests cover the identity maths, including that a pick resolves to the same
-distance the tile encodes and that an unsupported unit is refused rather than mis-scaled.
-
-**One bug this surfaced, worth keeping.** At 1 Mpc the LOD drops every star, and the card kept
-naming GAIA 3891136711141807232 at 85.944 pc — a star no longer on screen. `dropStaleSelection`
-now clears any star selection when the LOD drops the star set, so with 0 stars drawn the card
-claims nothing at all. A card asserting a measurement about something not drawn is precisely the
-failure this project exists to prevent, and nothing about that card looked wrong until the
-observation was read.
+**Exit.** Every drawn vertex resolves through the same identity path a click uses. A vertex with no
+catalogued star is reported, not silently placed.
 
 ---
 
-## E2 — Manifest integrity: every rendered light resolves to a catalog row
+## E5 — Exoplanet relations: host to planet, cited
 
-**Why now.** Phase 1 exit criterion 2 is the project's central promise: *every rendered measured
-object resolves to a catalog row*. Half of it was already built and I did not know — `ingest verify`
-re-runs each tile's recorded query against the same service and matches rows by catalog id, which is
-stronger than anything this plan proposed. What was missing is the cheap half that can run on every
-commit, and the online half that checks what is actually drawn.
+**Why now.** The knowledge graph has exactly one edge type — constellation lines, which E4 is about
+to make honest. PRD feature 4 names *exoplanet host → planet* explicitly. It is also the one
+relation type where the data is verified reachable: NASA Exoplanet Archive TAP answered from this
+host, returning positions, distances and host names.
 
-**Scope.** Offline, fast and network-free: for every manifest entry, the file exists, its `sha256`
-and byte length match, and a `MEASURED` tile names a catalog and release to cite. Online: every star
-currently drawn resolves, with a finite distance and a provenance string citing that tile's own
-catalog — sampled across the drawn range rather than the tile's first rows.
+Measured today: `pscomppars` gives **2,345 confirmed planets within 200 pc** with a distance, and
+the `ps` table carries RA/Dec for the same rows — everything a ribbon needs, inside the scale the
+atlas already renders.
 
-**Invariant that matters.** The check must run against the *rendered* set, not the tile's nominal
-count. A tile that claims 60,000 stars and yields 58,412 resolvable ones is exactly the failure
-worth catching.
+**Scope.** Ingest planets with a distance inside the atlas's reach, join each to its host star,
+draw the host→planet edge in the existing ribbon language, and give the planet a card: distance,
+discovery year, equilibrium temperature, and the archive citation.
 
-**Exit.** Zero unresolved rows at three scales (10 pc, 10 kpc, 1 Mpc), and a stale manifest fails.
+**Invariant that matters.** A planet's position is *inferred* from its host's direction and the
+archive's distance. Those are different kinds of number, and the card must not present an inferred
+position as though it were astrometric. The flag column already distinguishes them for the CSV
+export; the card needs to as well.
 
-**Status: done, 2026-10-04** — `ingest/manifest_check.py` (`python3 -m ingest.manifest_check`)
-runs in under a second: 2 tiles, 72,219 rows described truthfully, exit 0. Against a deliberately
-stale manifest in a scratch directory it reports the missing tile and the mismatched `sha256` and
-exits 1, with the real assets untouched. `web/src/core/integrity.js` runs the online half on every
-redraw and publishes `atlas.stats.integrity`. Verified live: 256 of 256 sampled rows resolve at
-10 pc (72,219 drawn) and at 10 kpc (6,918 drawn); at 1 Mpc nothing is drawn and nothing is
-claimed, which is a pass, not a silence. The offline catalog round-trip remains the exhaustive
-check; the runtime one is a 256-row sample across the drawn range and says so.
-
-**What this cost, honestly.** My first draft of the offline checker was a sha256 walk that
-duplicated what `ingest.verify` already does, and it overwrote that file. Two files in this project
-now have a verifier whose name I reached for without reading. The rule that follows: `find` before
-you `write`.
+**Exit.** A planet card names its host, cites the archive, and its distance matches the archive row
+that produced it.
 
 ---
 
-## E3 — Download the slice
+## E6 — Cinematic auto-fly
 
-**Why now.** PRD user 3 is *scientist-adjacent — checks that positions and provenance are correct,
-and can download the slice.* Two of three verbs are shipped. The third is the one that makes the
-first two checkable, and it is small once provenance is already first-class in the card.
+**Why now.** Locked decision 5 puts an *optional cinematic auto-fly mode* in v1. Every other part of
+that decision is shipped: the guided journey, the authored opening, free flight, deep links. This is
+the one promise in the locked decisions that no code implements yet.
 
-**Scope.** A button that exports exactly what is on screen as CSV: id, RA/Dec or baked Cartesian
-position, magnitude, colour index, distance in pc, light-travel years, and the provenance string.
-Nothing synthesised is exported without its flag in a column of its own.
+**Scope.** A mode, off by default and never taken from the viewer without consent, that flies the
+existing journey with the HUD quiet, the framing composed, and a hold at each scale so the eye can
+catch up. It drives the machinery that exists rather than adding a camera system.
 
-**Invariant that matters.** The export must not be able to launder a modelled object into a
-measured one. A `flag` column that reads `SIMULATED` for every row the tier generated, and
-`MEASURED` for catalogue rows, is not decoration — it is the export's contract.
+**Invariant that matters.** It must be interruptible. A viewer who touches anything takes the sky
+back immediately, because a cinematic mode that traps the pointer is the failure this project's
+whole premise argues against — the observer is the point.
 
-**Exit.** Export at 10 kpc produces rows whose provenance strings match the on-screen cards exactly,
-and every modelled row is flagged. Verified by reading the file back.
-
-**Status: done, 2026-10-04** — `web/src/core/export.js` builds the slice; `main.js` runs
-`assertFlagged` before anything is written, so a row that cannot say what it is never reaches the
-file. Verified by reading the file back. At 10 kpc: `atlas-slice-6918p.csv`, 6,918 rows, every
-provenance string byte-identical to the on-screen card. At 200 Mpc: 49,410 rows, which is exactly
-the number of cells drawn on screen, every one flagged `SIMULATED` and citing DESI DR1 as the
-science reference with *not a survey map* in the string.
-
-**Two bugs this found, both worth the feature.**
-
-1. *The export claimed more than the screen showed.* It emitted 350,618 modelled cells where the
-   renderer draws 49,410, because it walked every non-zero cell rather than the ones above the draw
-   threshold. An export that describes a sky nobody is looking at is the same class of lie as a card
-   that names an undrawn star. It now takes the live threshold from the visible layer, and the test
-   asserts the difference is exactly the faint cells.
-2. *The search box was never clickable.* `#hud` sets `pointer-events: none` so drags reach the sky,
-   and neither `#search` nor `#epoch` took the pointer back — a real mouse click landed on the canvas
-   behind them. My earlier verification typed into the field with `fill()`, which sets the value
-   directly and never hit-tests, so I had "verified" a control that could not be operated. The
-   export button inherited the defect, which is how it surfaced. Fixed for all three.
-
-The second one is the reason I now click with a real mouse before believing anything about the UI.
-Automation that bypasses hit-testing will happily confirm a control works when no user could press it.
+**Exit.** It runs, it yields on any input, and reduced-motion users are never handed it.
 
 ---
 
 ## Not now, and why
 
-- **Cinematic auto-fly mode** (locked decision 5). The journey builder and the opening already give
-  an authored camera path; a separate cinematic mode is presentation on top of machinery that
-  exists. Better spent after picking, which it would need to feel complete.
-- **A bulk DESI mirror.** Noted in sub-plan 05 as a locked assumption change: the tier stays
-  generated until a real mirror is reachable. Revisit only if `data.desi.lbl.gov` answers.
-- **Exoplanet and binary relations.** The relation layer carries constellation lines today. The
-  ingest for host–planet pairs is unbuilt, and inventing edges without a cited source would violate
-  the knowledge-graph rule that every edge is a relation we can name.
+- **Binary pairs from Gaia DR3.** Queried from this host twice. A sky patch a third of a degree
+  across, filtered on `nss_best_neighbour_angular_dist`, returned nothing in 90 seconds. Gaia TAP is
+  reachable but not usable for a harvest of this shape, and a wide-binary catalogue that must be
+  guessed at is worse than no edges.
+- **A bulk DESI mirror.** Unchanged from sub-plan 05: the tier stays generated until
+  `data.desi.lbl.gov` answers, at which point the badge flips back on the same tile format.
+- **Constellation *borders***, as opposed to figures. A second d3-celestial layer with the same
+  uncited-vertex problem E4 is fixing. Fix the vertices once, then decide whether borders earn
+  their place.
