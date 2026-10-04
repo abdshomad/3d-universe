@@ -18,6 +18,7 @@ import { DEEP_FIELDS } from './data/deep-fields.js';
 import { Backdrop } from './render/backdrop.js';
 import { anglesFromDirection, directionFromAngles } from './core/view.js';
 import { createNebulosity } from './render/nebulosity.js';
+import { createStarDust } from './render/star-dust.js';
 
 const TILE_DIR = '../assets/tiles';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
@@ -103,6 +104,7 @@ async function start() {
 
 /** Choose what to draw and rebuild the layers for the current origin. */
 function redraw() {
+  const previousEpoch = lastOriginEpoch;
   lastOriginEpoch = atlas.origin.recentredAt;
   const scale = Math.hypot(...atlas.rig.positionMetres);
   if (backdrop.needsRebuild(scale)) {
@@ -130,27 +132,51 @@ function redraw() {
     }));
     drawn += chosen.drawCount;
   }
-  rebuildNebulosity(scale);
+  // The medium depends on position and scale, never on the frame budget: under
+  // load the budget ticks several times a second, and re-quantizing 70k noise
+  // points for every tick was pure waste.
+  if (previousEpoch !== lastOriginEpoch || mediumScale === 0
+      || scale > mediumScale * 2 || scale < mediumScale / 2) {
+    rebuildMediums(scale);
+    mediumScale = scale;
+  }
   atlas.stats.drawCount = drawn;
 }
 
 let nebulosity = null;
+let dustLayers = [];
+let mediumScale = 0;
 
-/** Noise-driven dust. Rebuilt with the star layers because it shares their
- *  render space; the seed keeps the same sky on every machine. */
-function rebuildNebulosity(scale) {
+/** The medium between the catalogue stars: noise-driven dust plus a far/near
+ *  unresolved shell. Rebuilt with the star layers because they all share one
+ *  render space; the seeds keep the sky identical on every machine. */
+function rebuildMediums(scale) {
   if (nebulosity) {
     atlas.scene.remove(nebulosity);
     nebulosity.geometry.dispose();
     nebulosity.material.dispose();
+  }
+  for (const layer of dustLayers) {
+    atlas.scene.remove(layer);
+    layer.geometry.dispose();
+    layer.material.dispose();
   }
   nebulosity = createNebulosity({
     radiusMetres: Math.max(scale * 0.6, 1e3),
     count: 24000,
     cameraMetres: atlas.origin.originMetres,
   });
-  atlas.scene.add(nebulosity);
+  dustLayers = createStarDust({
+    innerRadiusMetres: Math.max(scale * 0.15, 1e2),
+    outerRadiusMetres: Math.max(scale * 1.2, 1e4),
+    count: 45000,
+    cameraMetres: atlas.origin.originMetres,
+  });
+  atlas.scene.add(nebulosity, ...dustLayers);
   atlas.stats.nebulaPoints = nebulosity.userData.pointCount;
+  atlas.stats.dustPoints = dustLayers.reduce(
+    (total, layer) => total + layer.userData.pointCount, 0,
+  );
 }
 
 /** Keep the depth range wrapped around what is actually on screen. */

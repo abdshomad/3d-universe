@@ -18,7 +18,10 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   medium has holes instead of a wash, and the seed makes the same sky on every machine. Isolated in a
   browser: lit pixels 18,588 with the dust, 12,954 without (+43%). The point primitive it shares with
   the star field now lives in `render/point-layer.js`.
-- [ ] `[TODO]` **Star dust**: far (1 px) and near (soft sprite) instanced layers with parallax.
+- [x] **Star dust**: `web/src/render/star-dust.js` — a far layer of 1 px grains (72% of 45,000) and
+  a near layer of soft sprites (28%), both additive and seeded so the sky is identical everywhere.
+  Flagged `UNRESOLVED`: dust stands for what the catalogue did not resolve, and is never presented
+  as measurement. Isolated in a browser: 1,015,952 lit pixels with the dust, 43,596 without.
 - [ ] `[TODO]` **Measured objects**: additive sprites, magnitude → brightness, B−V → RGB.
 - [ ] `[TODO]` **Relations**: tapered Bézier ribbons, noise-modulated alpha, hue per relation type.
 - [ ] `[TODO]` **Reticles**: screen-space-width wireframe circles, tick arcs, crosshair, uncertainty

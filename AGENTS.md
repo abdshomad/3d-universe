@@ -91,3 +91,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   every render module now imports `three/webgpu` explicitly; and an A/B of the dust is meaningless
   while the camera is flying — the isolated comparison (stars and backdrop hidden) is what showed
   18,588 lit pixels against 12,954.
+- 2026-10-04 — `n` #15 (sub-plan 03): star dust — far 1 px grains plus near soft sprites, flagged
+  UNRESOLVED so it is never mistaken for catalogue data. Chasing a measurement that came out
+  backwards exposed a real waste bug: the whole medium was being re-quantized every time the frame
+  budget ticked, several times a second under load. It now rebuilds only when the origin moves or
+  the view scale doubles. 99/99 tests pass.
