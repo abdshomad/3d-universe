@@ -78,6 +78,15 @@
         text-transform: uppercase; cursor: pointer; }
       #export:hover { color: #c6cad2; border-color: rgba(198, 202, 210, 0.5); }
 
+      /* The caption belongs to the hold. It is the only thing the cinematic adds
+         to the frame, and it leaves with everything else when the sky does. */
+      #caption { position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+        max-width: 620px; padding: 9px 14px; text-align: center;
+        border: 1px solid rgba(138, 143, 152, 0.18); background: rgba(5, 6, 10, 0.6);
+        color: #c6cad2; font-size: 11px; letter-spacing: 0.06em; text-transform: none;
+        line-height: 1.6; }
+      #caption[hidden] { display: none; }
+
       #badge { position: absolute; bottom: 18px; right: 16px; padding: 6px 11px;
         border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2; letter-spacing: 0.22em; }
       #hud-meta { position: absolute; top: 14px; right: 16px; color: var(--ink-dim); text-align: right; }
@@ -127,6 +136,7 @@
       <button id="export" data-hud="export" type="button">download this slice as csv</button>
 
 
+      <div id="caption" hidden></div>
       <div id="hint"></div>
       <div id="epoch-line">sky epoch —</div>
       <input id="epoch" type="range" min="-10000" max="10000" step="10" value="0"

@@ -129,6 +129,30 @@ not be looking at.
 **Exit.** Every cinematic step shows its caption during its hold, and the caption disappears the
 moment the sky is taken back.
 
+**Status: done, 2026-10-05** — `web/src/data/captions.js`. Every number in a caption is derived from the
+step's own radius through `LIGHT_YEARS_PER_PC`, so a caption cannot drift away from the scale it
+describes, and each carries its source. The tour also now **ends where the atlas stops**: a sixth step
+at the modelled tier, captioned *Beyond the measured sky: 500 megaparsecs of a generated density
+field. This is a model of where structure sits, not a survey of what is there — SIMULATED.* The word
+simulated is in the sentence, not only in a badge the viewer may not be looking at.
+
+Verified live: all six captions appear in order — 0.01 pc, 5 pc, 100 pc, 1 kpc, 10 kpc, then the
+modelled tier — and Escape hides the caption with the sky.
+
+**The tour was two steps long, and nothing said so.** `buildCinematicSteps` found arrivals by waiting
+for the route's waypoint name to change, with an 8-second patience — shorter than the route's own
+10-to-14-second segments. It gave up after `nearby-stars` and shipped a 20-second tour through two of
+five scales, with every unit test green because the derivation lived inline in `main.js` and had none.
+The patience is now 20 seconds and the derivation lives in `web/src/routes/cinematic-path.js`, with a
+test that pins the real route to one step per waypoint and a second that records *why* 8 seconds was
+wrong.
+
+**Two more bugs, both invisible until the browser walked the whole path.** The tour ran on the clamped
+frame delta, which exists so a stall cannot teleport the camera — so on a slow machine a presentation
+played in slow motion. It runs on wall-clock time now. And the path was built at module scope, before
+the modelled tier exists, so the sixth step was silently absent; it is built once the tier loads, and
+until then the app behaves as if there is no cinematic to interrupt.
+
 ---
 
 ## Not now, and why

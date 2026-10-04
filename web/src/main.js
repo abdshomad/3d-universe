@@ -26,6 +26,7 @@ import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
 import { createStarLayer } from './render/star-layer.js';
 import { AtlasScene } from './render/scene.js';
+import { cinematicStepsFromRoute } from './routes/cinematic-path.js';
 import { createScaleOutPath } from './routes/scale-out.js';
 import { DEEP_FIELDS } from './data/deep-fields.js';
 import { Backdrop } from './render/backdrop.js';
@@ -52,6 +53,7 @@ import { epochSpan, formatYear } from './core/light-travel.js';
 import { Onboarding } from './core/onboarding.js';
 import { motionPolicy, prefersReducedMotion } from './core/accessibility.js';
 import { decodeView, encodeView, makeView } from './core/deep-link.js';
+import { captionFor } from './data/captions.js';
 import { OPENING_STEPS } from './data/onboarding.js';
 const flight = new FlightController();
 const keys = new Set();
@@ -221,6 +223,7 @@ async function start() {
     attachSearchBox();
   }
   await loadLssField();
+  buildPath();
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
   const figurePayload = await loadJson(FIGURE_STAR_DIR).catch(() => null);
   if (figurePayload) {
@@ -267,7 +270,10 @@ async function start() {
     }
 
     if (cinematic.active) {
-      const step = cinematic.update(delta) ?? cinematic.current;
+      // Wall-clock, not the clamped step: the clamp exists so a stall cannot
+      // teleport the camera, but a presentation that runs in slow motion on a
+      // slow machine is worse than one that keeps its timing.
+      const step = cinematic.update(measured) ?? cinematic.current;
       if (step) {
         const previous = cinematic.steps[Math.max(0, cinematic.index - 1)] ?? step;
         const phase = cinematic.holding ? 1 : cinematic.stepPhase;
@@ -275,6 +281,7 @@ async function start() {
           + (step.positionMetres[axis] - previous.positionMetres[axis]) * phase);
         atlas.rig.lookAtAngles(step.yaw, step.pitch);
         atlas.stats.waypoint = `cinematic · ${step.id}`;
+        renderCaption();
       }
     } else if (freeFlight) {
       atlas.rig.resetDrift();
@@ -399,6 +406,8 @@ let nebulosity = null;
 let dustLayers = [];
 let mediumScale = 0;
 let relationPayload = null;
+const captionEl = document.getElementById('caption');
+let captionShown = null;
 let figureStarIndex = null;
 let figureStarPayload = null;
 /**
@@ -406,34 +415,43 @@ let figureStarPayload = null;
  * first reached, with a hold so the eye can catch up with the scale.
  */
 function buildCinematicSteps() {
-  const arrivals = [];
-  let lastName = null;
-  let quiet = 0;
-  for (let t = 0; t <= 240 && quiet < 8; t += 0.25) {
-    const shot = route.sample(t);
-    if (shot.name !== lastName) {
-      arrivals.push({ t, shot });
-      lastName = shot.name;
-      quiet = 0;
-    } else {
-      quiet += 0.25;
-    }
-  }
-  return arrivals.map(({ t, shot }, index) => {
-    const angles = anglesFromDirection(shot.lookDirection);
-    const previous = index === 0 ? 0 : arrivals[index - 1].t;
-    return {
-      id: shot.name,
-      travel: Math.max(1, t - previous),
-      hold: 5,
-      positionMetres: shot.positionMetres,
-      yaw: angles.yaw,
-      pitch: angles.pitch,
-    };
-  });
+  return cinematicStepsFromRoute(route, { toAngles: anglesFromDirection });
 }
 
-const cinematic = new Cinematic(buildCinematicSteps());
+/**
+ * The tour ends where the atlas stops: at the modelled tier, so the last thing
+ * a viewer is told is that the sky beyond the measured one is a model.
+ */
+function appendModelledStep(steps) {
+  if (!lssField) return steps;
+  const metres = lssField.radiusMpc * MPC_METRES * 0.4;
+  return [...steps, {
+    id: 'large-scale-structure',
+    kind: 'field',
+    radiusMpc: lssField.radiusMpc,
+    travel: 8,
+    hold: 6,
+    positionMetres: [metres, 0, 0],
+    yaw: Math.PI / 2,
+    pitch: 0,
+  }];
+}
+
+
+/** The caption belongs to the hold; it leaves the moment the sky is taken back. */
+function renderCaption() {
+  const caption = captionFor(cinematic.active ? cinematic.current : null);
+  if (!caption) return hideCaption();
+  if (captionShown === caption.text) return;
+  captionShown = caption.text;
+  captionEl.textContent = `${caption.text} — ${caption.source}`;
+  captionEl.hidden = false;
+}
+
+function hideCaption() {
+  captionShown = null;
+  captionEl.hidden = true;
+}
 
 /** Reduced motion means this is never offered, not merely discouraged. */
 function startCinematic() {
@@ -443,6 +461,7 @@ function startCinematic() {
   cinematic.start();
   guide.record('cinematic');
   document.body.classList.add('cinematic');
+  renderCaption();
   freeFlight = false;
   return true;
 }
@@ -450,6 +469,7 @@ function startCinematic() {
 function stopCinematic(action = 'dismissed') {
   if (!cinematic.dismiss(action)) return false;
   document.body.classList.remove('cinematic');
+  hideCaption();
   return true;
 }
 
@@ -811,6 +831,21 @@ let cardSelection = null;
 const frameBudget = createTierBudget({ budgetMs: 20 });
 atlas.frameBudget = frameBudget;
 let lssField = null;
+
+/**
+ * Built once the modelled tier has loaded, because the tour ends there and the
+ * tier does not exist at module scope. Until then the app behaves as if there
+ * is no cinematic, which is the same as there being nothing to interrupt.
+ */
+const IDLE_CINEMATIC = Object.freeze({
+  active: false, current: null, steps: [], start: () => false,
+  dismiss: () => false, record: () => false, update: () => null,
+});
+let cinematic = IDLE_CINEMATIC;
+
+function buildPath() {
+  cinematic = new Cinematic(appendModelledStep(buildCinematicSteps()));
+}
 let lssLevels = [];
 let lssLevel = 2;
 const LSS_FADE_END_MPC = 8;
