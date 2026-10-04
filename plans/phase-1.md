@@ -14,7 +14,7 @@ Parent plan. Split into sub-plans because the full plan does not fit one readabl
 
 | # | Sub-plan | Depends on | Ships |
 |---|---|---|---|
-| 01 | [`01-data-foundation.md`](phase-1/01-data-foundation.md) | — | Baked, provenance-carrying catalog tiles |
+| 01 | [`01-data-foundation.md`](phase-1/01-data-foundation.md) | — | **done** — baked, provenance-carrying catalog tiles |
 | 02 | [`02-atlas-engine.md`](phase-1/02-atlas-engine.md) | 01 | Scale-spanning renderer, 60 fps at 100 k stars |
 | 03 | [`03-visual-language.md`](phase-1/03-visual-language.md) | 02 | Deep-field medium, ribbons, reticles, HUD |
 | 04 | [`04-experience.md`](phase-1/04-experience.md) | 03 | Flight, search, fact cards, time |

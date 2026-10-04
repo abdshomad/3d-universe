@@ -1,34 +1,41 @@
 """ESA Gaia star catalog over TAP/ADQL.
 
+The release is configuration, not code: `ingest/catalogs.json` names the table,
+columns and endpoint, and `ingest.catalogs.gaia("DR4")` switches to the next
+release without touching this module.
+
 Verified from the build host on 2026-10-04:
 
-- `AIP_ENDPOINT` (Gaia@AIP mirror) is the default. A parallax-filtered query
-  returns VOTable rows in about a second.
-- `ESA_ENDPOINT` (the official archive) is not usable as-is for this query: it
-  answers 10-42 s later with an async `JOBID` and a VOTable that carries no
-  `TABLEDATA`. Supporting it properly means polling the job, which is separate
-  work — so it stays opt-in and fails loudly instead of returning empty results.
+- The Gaia@AIP mirror is the default endpoint. A parallax-filtered query
+  returns VOTable rows in about a second, and it serves DR2 and DR3.
+- The official ESA archive answers 10-42 s late with an async `JOBID` and a
+  VOTable with no `TABLEDATA`. Passing it as `--endpoint esa` therefore raises
+  rather than returning empty results.
+- DR4 is not published yet (ESA: 2026-12-02); the registry refuses to hand it
+  out until its config entry is marked available.
 
-Queries are ordered by `parallax DESC, source_id` so the same query always
-returns rows in the same order: tile rows can then be matched positionally
-against a fresh query during provenance verification.
+Queries order by `parallax DESC, source_id` so the same query always returns
+rows in the same order: tile rows can then be matched positionally against a
+fresh query during provenance verification.
 """
 
 from __future__ import annotations
 
 from ingest.astro.distance import distance_pc
+from ingest.catalogs import Catalog, gaia_catalog
 from ingest.http import FetchError, build_url, fetch_text, now_iso
 from ingest.schema import MEASURED, CatalogObject, Provenance
 from ingest.sources.base import provenance
 from ingest.votable import as_dicts, parse_table, to_float
 
 name = "gaia"
-release = "DR3"
 
-AIP_ENDPOINT = "https://gaia.aip.de/tap/sync"
 ESA_ENDPOINT = "https://gea.esac.esa.int/tap-server/tap/sync"
-TABLE = "gaiadr3.gaia_source"
-COLUMNS = "source_id,ra,dec,parallax,phot_g_mean_mag,bp_rp"
+DEFAULT_RELEASE = "DR3"
+
+
+def default_catalog() -> Catalog:
+    return gaia_catalog(DEFAULT_RELEASE)
 
 
 def build_query(
@@ -36,9 +43,10 @@ def build_query(
     min_parallax_mas: float,
     max_mag: float | None = None,
     cone: tuple[float, float, float] | None = None,
-    table: str = TABLE,
+    catalog: Catalog | None = None,
 ) -> str:
     """ADQL for the nearest, brightest stars; parallax filter is the product."""
+    catalog = catalog or default_catalog()
     conditions = [f"parallax > {min_parallax_mas}"]
     if max_mag is not None:
         conditions.append(f"phot_g_mean_mag < {max_mag}")
@@ -49,24 +57,29 @@ def build_query(
         )
     where = " AND ".join(conditions)
     order = "ORDER BY parallax DESC, source_id"
-    return f"SELECT TOP {limit} {COLUMNS} FROM {table} WHERE {where} {order}"
+    return (
+        f"SELECT TOP {limit} {catalog.column_list} FROM {catalog.table} "
+        f"WHERE {where} {order}"
+    )
 
 
 def run(
-    query: str, endpoint: str = AIP_ENDPOINT, timeout: float = 120.0
+    query: str, endpoint: str, timeout: float = 120.0
 ) -> tuple[list[str], list[list[str]]]:
-    """Execute ADQL and return (fields, rows). Raises when the service returns nothing."""
+    """Execute ADQL and return (fields, rows); raises when the service returns nothing."""
     url = build_url(endpoint, {"REQUEST": "doQuery", "LANG": "ADQL", "QUERY": query})
     fields, rows = parse_table(fetch_text(url, timeout=timeout))
     if not rows:
         raise FetchError(
             f"{endpoint} returned no rows. The ESA archive answers with an async "
-            "job; use the AIP mirror (the default) until job polling exists."
+            "job; use the Gaia@AIP mirror (the default) until job polling exists."
         )
     return fields, rows
 
 
-def normalize(fields: list[str], rows: list[list[str]], prov: Provenance) -> list[CatalogObject]:
+def normalize(
+    fields: list[str], rows: list[list[str]], prov: Provenance
+) -> list[CatalogObject]:
     """Turn query rows into records; a row without a parallax never gets a distance."""
     records: list[CatalogObject] = []
     for row in as_dicts(fields, rows):
@@ -93,17 +106,20 @@ def fetch(
     min_parallax_mas: float = 10.0,
     max_mag: float | None = 12.0,
     cone: tuple[float, float, float] | None = None,
-    endpoint: str = AIP_ENDPOINT,
+    catalog: Catalog | None = None,
+    endpoint: str | None = None,
     timeout: float = 120.0,
 ) -> list[CatalogObject]:
     """Fetch stars with a usable parallax and normalize them."""
-    query = build_query(limit, min_parallax_mas, max_mag, cone)
-    fields, rows = run(query, endpoint, timeout)
+    catalog = (catalog or default_catalog()).require_available()
+    target = endpoint or catalog.endpoint
+    query = build_query(limit, min_parallax_mas, max_mag, cone, catalog)
+    fields, rows = run(query, target, timeout)
     prov = provenance(
-        catalog="esa.gaia",
-        release=release,
+        catalog=catalog.catalog,
+        release=catalog.release,
         query=query,
-        source_url=build_url(endpoint, {"REQUEST": "doQuery", "LANG": "ADQL", "QUERY": query}),
+        source_url=build_url(target, {"REQUEST": "doQuery", "LANG": "ADQL", "QUERY": query}),
         fetched_at=now_iso(),
         flag=MEASURED,
     )

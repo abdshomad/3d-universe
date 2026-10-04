@@ -48,8 +48,10 @@ the ingest package fails loudly on an empty result rather than returning nothing
   Gaia 2000/2000 and SBDB 150/150 resolve, position delta at the quantization bound. Two negative
   cases fail loudly: a bogus id (1999/2000) and a shifted star (0.539 pc vs 0.000342 tolerance).
   Tiles now store per-object ids (`U3DTILE2`), so a selected star is citable.
-- [ ] `[TODO]` Gaia DR4 re-bake path: the DR4 lands 2026-12-02; changing the release must be a config
-  edit, not a code change.
+- [x] Gaia DR4 re-bake path: releases are data, not code — `ingest/catalogs.json` plus
+  `ingest/catalogs.py`. `--release DR2` and `--release DR3` both bake and verify (2000/2000 ids each)
+  with no code change; DR4 is refused with the reason and its 2026-12-02 date, and flipping
+  `available` in the JSON is all that activation needs.
 
 ## Acceptance
 

@@ -42,3 +42,6 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   trip by re-running each tile's stored query and matching catalog ids. Tiles gained a per-object id
   array (`U3DTILE2`, 19 B/star) because a tile without ids cannot cite a star. Corrupting a tile
   (bad id or a shoved position) makes verification fail, so the check has teeth.
+- 2026-10-04 — `n` #5 (sub-plan 01, final): catalog releases became data — `ingest/catalogs.json` +
+  `catalogs.py`. DR2 and DR3 both bake and verify with no code change; unpublished releases are
+  refused with the reason and their date. Sub-plan 01 is complete; next is sub-plan 02 (engine).

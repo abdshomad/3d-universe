@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ingest import manifest as manifest_module
+from ingest.catalogs import Catalog
 from ingest.schema import CatalogObject
 from ingest.sources import gaia, sbdb
 from ingest.tiles import Tile, build_tile, read_tile, write_tile
+from ingest import manifest as manifest_module
 
 DEFAULT_DIR = "assets/tiles"
-GAIA_TILE = "gaia-nearby"
 SBDB_TILE = "sbdb-small-bodies"
 
 
@@ -39,11 +39,18 @@ def bake_gaia(
     max_mag: float | None = 12.0,
     out_dir: str = DEFAULT_DIR,
     tile_id: str | None = None,
+    catalog: Catalog | None = None,
+    endpoint: str | None = None,
 ) -> BakeResult:
+    catalog = catalog or gaia.default_catalog()
     records: list[CatalogObject] = gaia.fetch(
-        limit=limit, min_parallax_mas=min_parallax_mas, max_mag=max_mag
+        limit=limit,
+        min_parallax_mas=min_parallax_mas,
+        max_mag=max_mag,
+        catalog=catalog,
+        endpoint=endpoint,
     )
-    return _write(records, out_dir, tile_id or GAIA_TILE)
+    return _write(records, out_dir, tile_id or f"gaia-{catalog.release.lower()}")
 
 
 def bake_sbdb(

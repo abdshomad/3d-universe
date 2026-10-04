@@ -1,0 +1,24 @@
+{
+  "gaia": {
+    "catalog": "esa.gaia",
+    "endpoint": "https://gaia.aip.de/tap/sync",
+    "columns": ["source_id", "ra", "dec", "parallax", "phot_g_mean_mag", "bp_rp"],
+    "releases": {
+      "DR2": {
+        "table": "gaiadr2.gaia_source",
+        "available": true,
+        "note": "reachable on the Gaia@AIP mirror"
+      },
+      "DR3": {
+        "table": "gaiadr3.gaia_source",
+        "available": true,
+        "note": "default; 1413 stars at parallax>50 mas and G<12"
+      },
+      "DR4": {
+        "table": "gaiadr4.gaia_source",
+        "available": false,
+        "note": "ESA releases DR4 on 2026-12-02; no gaiadr4 table is published yet"
+      }
+    }
+  }
+}

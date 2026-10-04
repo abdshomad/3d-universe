@@ -41,6 +41,11 @@ Tiles are `U3DTILE2`: a JSON header plus `ids u64 | pos_q u16 | mag i16 | rgb u8
 Each tile carries its own unit (parsecs for stars, AU for small bodies), the provenance block and every
 catalog id, so a selected object resolves to its row and a tile is self-citing.
 
+Catalog releases are data. `ingest/catalogs.json` names the table, columns and endpoint per release;
+`--release DR2` or `DR3` switches with no code change. A release that has not been published is
+refused with its reason — Gaia DR4 is scheduled for 2026-12-02, so flipping `available` in that file
+is the entire activation.
+
 ## Verified access paths
 
 Measured from the build host, 2026-10-04:

@@ -16,6 +16,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from ingest import manifest as manifest_module
+from ingest.catalogs import gaia_catalog
 from ingest.bake import DEFAULT_DIR, bake_gaia, bake_sbdb
 from ingest.sources import gaia, imagery, sbdb
 from ingest.verify import verify_dir
@@ -42,12 +43,15 @@ def _emit(records: list[dict], out: str | None) -> None:
 
 
 def _run_gaia(args: argparse.Namespace) -> int:
+    catalog = gaia_catalog(args.release)
+    endpoint = gaia.ESA_ENDPOINT if args.endpoint == "esa" else None
     records = gaia.fetch(
         limit=args.limit,
         min_parallax_mas=args.min_parallax,
         max_mag=args.max_mag,
         cone=_parse_cone(args.cone),
-        endpoint=gaia.ESA_ENDPOINT if args.endpoint == "esa" else gaia.AIP_ENDPOINT,
+        catalog=catalog,
+        endpoint=endpoint,
     )
     _emit([r.as_row() for r in records], args.out)
     return 0
@@ -72,6 +76,8 @@ def _run_bake(args: argparse.Namespace) -> int:
             min_parallax_mas=args.min_parallax,
             out_dir=args.out_dir,
             tile_id=args.tile_id,
+            catalog=gaia_catalog(args.release),
+            endpoint=gaia.ESA_ENDPOINT if args.endpoint == "esa" else None,
         )
     else:
         result = bake_sbdb(
@@ -115,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     gaia_parser.add_argument("--max-mag", type=float, default=12.0)
     gaia_parser.add_argument("--cone", default=None, help="ra,dec,radius in degrees")
     gaia_parser.add_argument("--endpoint", choices=["aip", "esa"], default="aip")
+    gaia_parser.add_argument("--release", default=gaia.DEFAULT_RELEASE)
     gaia_parser.add_argument("--out", default=None)
     gaia_parser.set_defaults(func=_run_gaia)
 
@@ -135,6 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
     bake_parser.add_argument("--limit", type=int, default=5000)
     bake_parser.add_argument("--min-parallax", type=float, default=10.0)
     bake_parser.add_argument("--out-dir", default=DEFAULT_DIR)
+    bake_parser.add_argument("--release", default=gaia.DEFAULT_RELEASE)
+    bake_parser.add_argument("--endpoint", choices=["aip", "esa"], default="aip")
     bake_parser.add_argument("--tile-id", default=None)
     bake_parser.set_defaults(func=_run_bake)
 
