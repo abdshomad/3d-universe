@@ -79,3 +79,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   `config/perf-budgets.json`. Found while wiring it: the harness was recording the *clamped* frame
   step, so every frame measured exactly 100 ms. Now it records the real interval — median 0.167 s,
   p95 0.20 s, worst 0.25 s at 3,000 points under software rendering.
+- 2026-10-04 — `n` #13 (sub-plan 03): deep-field backdrop — real Webb and Hubble imagery on four
+  parallax planes per field, placed by ICRS coordinates. Two real bugs surfaced: three's camera
+  looks down -Z, so the yaw mapping pointed the camera *away* from every target and mirrored the LOD
+  culling frustum; and route bearings and celestial RA used two different axis conventions, so
+  "look at 145 degrees" missed the field placed at 145. Both now live in `core/view.js` and
+  `core/celestial.js` with round-trip tests. 78/78 tests pass.

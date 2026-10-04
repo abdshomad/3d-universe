@@ -98,3 +98,32 @@ test('nonsense routes are refused', () => {
   assert.throws(() => new CameraPath([{ radiusPc: -1 }, { radiusPc: 2 }]), /unusable radius/);
   assert.throws(() => route().sample(-1), /negative/);
 });
+test('a waypoint can declare what the camera faces', () => {
+  const path = new CameraPath([
+    { name: 'a', radiusPc: 1, bearingDeg: 0, segmentSeconds: 4, holdSeconds: 2,
+      lookAtDeg: { ra: 90, dec: 0 } },
+    { name: 'b', radiusPc: 100, bearingDeg: 0, segmentSeconds: 6, holdSeconds: 0 },
+  ]);
+  const [x, y] = path.sample(1).lookDirection;
+  assert.ok(Math.abs(x) < 1e-12 && Math.abs(y - 1) < 1e-12, `gaze ${x},${y}`);
+});
+
+test('a waypoint without a gaze looks outward along the route', () => {
+  const path = new CameraPath([
+    { name: 'a', radiusPc: 1, bearingDeg: 90, segmentSeconds: 4, holdSeconds: 0 },
+    { name: 'b', radiusPc: 100, bearingDeg: 90, segmentSeconds: 4, holdSeconds: 0 },
+  ]);
+  const look = path.sample(1).lookDirection;
+  assert.ok(Math.abs(look[0]) < 1e-12 && Math.abs(look[2] - 1) < 1e-12, `gaze ${look}`);
+});
+
+test('the gaze is a unit vector whatever the waypoint says', () => {
+  const path = new CameraPath([
+    { name: 'a', radiusPc: 1, lookAtDeg: { ra: 110.8054, dec: -73.4569 }, segmentSeconds: 4, holdSeconds: 0 },
+    { name: 'b', radiusPc: 100, lookAtDeg: { ra: 310, dec: 0 }, segmentSeconds: 4, holdSeconds: 0 },
+  ]);
+  for (const t of [0, 1, 2, 3.9]) {
+    const look = path.sample(t).lookDirection;
+    assert.ok(Math.abs(Math.hypot(...look) - 1) < 1e-12, `t=${t} gaze not unit`);
+  }
+});

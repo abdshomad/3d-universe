@@ -14,6 +14,9 @@ import { createStarLayer } from './render/star-layer.js';
 import { AtlasScene } from './render/scene.js';
 import { formatScale } from './core/units.js';
 import { createScaleOutPath } from './routes/scale-out.js';
+import { DEEP_FIELDS } from './data/deep-fields.js';
+import { Backdrop } from './render/backdrop.js';
+import { anglesFromDirection, directionFromAngles } from './core/view.js';
 
 const TILE_DIR = '../assets/tiles';
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
@@ -27,6 +30,12 @@ const atlas = new AtlasScene({ canvas, aspect: 1 });
 window.__atlas = atlas;
 atlas.budget = budget;
 atlas.route = route;
+const backdrop = new Backdrop({
+  fields: DEEP_FIELDS,
+  urlFor: (field) => '../assets/imagery/' + field.file,
+  scene: atlas.scene,
+});
+atlas.backdrop = backdrop;
 
 let visible = [];
 let tiles = [];
@@ -50,6 +59,7 @@ async function loadTile(path) {
 async function start() {
   await atlas.init();
   atlas.resize(canvas.clientWidth, canvas.clientHeight);
+  await backdrop.load();
 
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
@@ -73,8 +83,10 @@ async function start() {
     routeTime += delta;
     const shot = route.sample(routeTime);
     atlas.rig.positionMetres = shot.positionMetres;
-    // Look outward along the route: the camera faces the direction it travels.
-    atlas.rig.yaw = Math.atan2(shot.positionMetres[0], shot.positionMetres[2]);
+    // The route says where to face: a deep field, or outward along the route.
+    const look = anglesFromDirection(shot.lookDirection);
+    atlas.rig.yaw = look.yaw;
+    atlas.rig.pitch = look.pitch;
     atlas.stats.waypoint = shot.name;
     atlas.stats.routeSeconds = routeTime;
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
@@ -91,6 +103,10 @@ async function start() {
 /** Choose what to draw and rebuild the layers for the current origin. */
 function redraw() {
   lastOriginEpoch = atlas.origin.recentredAt;
+  const scale = Math.hypot(...atlas.rig.positionMetres);
+  if (backdrop.needsRebuild(scale)) {
+    backdrop.rebuild({ frameScaleMetres: scale, originMetres: atlas.origin.originMetres });
+  }
   const position = atlas.rig.positionMetres;
   const direction = directionFromRig(atlas.rig);
   visible = tree.select({
@@ -126,17 +142,26 @@ function refreshViewRange() {
     min = Math.min(min, distance);
     max = Math.max(max, distance + chosen.box.boundingRadius());
   }
+  // The backdrop planes sit far beyond the star tiles; a far plane computed from
+  // the stars alone clips the entire deep field away.
+  for (const group of backdrop.groups) {
+    for (const plane of group.userData.planes) {
+      const distance = plane.position.length();
+      min = Math.min(min, Math.max(distance - planeScale(plane), 0));
+      max = Math.max(max, distance + planeScale(plane));
+    }
+  }
   if (Number.isFinite(min)) atlas.setViewRange(min, Math.max(max, min * 10));
 }
 
+function planeScale(plane) {
+  return plane.scale.x;
+}
+
 function directionFromRig(rig) {
-  const [x, y, z] = [
-    Math.cos(rig.pitch) * Math.sin(rig.yaw),
-    Math.sin(rig.pitch),
-    Math.cos(rig.pitch) * Math.cos(rig.yaw),
-  ];
-  const length = Math.hypot(x, y, z) || 1;
-  return [x / length, y / length, z / length];
+  // The same convention the camera uses, so the culling frustum matches what is
+  // actually on screen.
+  return directionFromAngles(rig.yaw, rig.pitch);
 }
 
 function updateReadout() {

@@ -1,16 +1,16 @@
 /**
  * Cinematic camera paths as data.
  *
- * A route is a list of waypoints — a radius, a bearing and a hold — evaluated
- * deterministically: the same time always yields the same position, on any
- * machine, at any frame rate. A film is not something that drifts while you are
- * looking at it.
+ * A route is a list of waypoints — a radius, a bearing, a hold, and what the
+ * camera should look at — evaluated deterministically: the same moment always
+ * yields the same position and the same gaze, on any machine, at any frame rate.
  *
  * Radius interpolates geometrically between waypoints, the same rule the rig
  * uses, so travelling from 1 parsec to 10 kiloparsec feels like one move rather
  * than a crawl followed by a fall. Bearings interpolate along the shortest arc.
  */
 
+import { bearingDirection, celestialDirection } from './celestial.js';
 import { pcToMetres } from './units.js';
 
 const DEFAULT_SEGMENT_SECONDS = 6;
@@ -19,7 +19,8 @@ const DEFAULT_HOLD_SECONDS = 2;
 export class CameraPath {
   /**
    * @param {Array<{name?: string, radiusPc: number, bearingDeg?: number,
-   *                holdSeconds?: number, segmentSeconds?: number}>} waypoints
+   *                holdSeconds?: number, segmentSeconds?: number,
+   *                lookAtDeg?: {ra: number, dec: number}}>} waypoints
    */
   constructor(waypoints) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
@@ -37,7 +38,8 @@ export class CameraPath {
   }
 
   get durationSeconds() {
-    return this._timeline[this._timeline.length - 1].start + this._timeline[this._timeline.length - 1].seconds;
+    const last = this._timeline[this._timeline.length - 1];
+    return last.start + last.seconds;
   }
 
   /** Waypoint names in order, for a HUD or a test. */
@@ -46,10 +48,8 @@ export class CameraPath {
   }
 
   /**
-   * Where the camera is at a given moment.
+   * Where the camera is, and what it faces, at a given moment.
    * @param {number} elapsedSeconds
-   * @returns {{positionMetres: number[], bearingDeg: number, name: string,
-   *            segment: number, progress: number, holding: boolean}}
    */
   sample(elapsedSeconds) {
     if (!(elapsedSeconds >= 0)) throw new RangeError('elapsedSeconds must not be negative');
@@ -66,11 +66,23 @@ export class CameraPath {
     return {
       positionMetres: polarToCartesian(radiusPc, bearingDeg),
       bearingDeg,
+      lookDirection: this._gaze(u < 0.5 ? from : to, bearingDeg),
       name: u >= 1 ? to.name : from.name,
       segment: span.index,
       progress: u,
       holding: span.holding,
     };
+  }
+
+  /**
+   * Gaze for a waypoint: whatever the route says to look at, or outward along
+   * the route when it says nothing. Nearest waypoint wins — the gaze is a
+   * directorial choice per beat, not something to interpolate.
+   */
+  _gaze(waypoint, bearingDeg) {
+    return waypoint.lookAtDeg
+      ? celestialDirection(waypoint.lookAtDeg.ra, waypoint.lookAtDeg.dec)
+      : bearingDirection(bearingDeg);
   }
 
   _buildTimeline() {
@@ -110,10 +122,6 @@ export function easeExponential(u) {
   return (Math.exp(curve * t) - 1) / (Math.exp(curve) - 1);
 }
 
-
-function wrapBearing(degrees) {
-  return ((degrees % 360) + 360) % 360;
-}
 function normalise(waypoint, index) {
   const radiusPc = Number(waypoint.radiusPc);
   if (!Number.isFinite(radiusPc) || radiusPc < 0) {
@@ -125,10 +133,15 @@ function normalise(waypoint, index) {
     bearingDeg: Number(waypoint.bearingDeg ?? 0),
     holdSeconds: Number(waypoint.holdSeconds ?? DEFAULT_HOLD_SECONDS),
     segmentSeconds: Number(waypoint.segmentSeconds ?? DEFAULT_SEGMENT_SECONDS),
+    lookAtDeg: waypoint.lookAtDeg ?? null,
   };
 }
 
 function lerpBearing(fromDeg, toDeg, u) {
   const delta = ((toDeg - fromDeg + 540) % 360) - 180; // shortest arc
   return wrapBearing(fromDeg + delta * u);
+}
+
+function wrapBearing(degrees) {
+  return ((degrees % 360) + 360) % 360;
 }
