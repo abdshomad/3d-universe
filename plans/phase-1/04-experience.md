@@ -7,8 +7,12 @@ Depends on 03.
 
 ## Tasks
 
-- [ ] `[TODO]` Free flight controls that work identically at every scale, including at 1 AU and at
-  100 kpc. Same keys, same verbs — only the speed law changes.
+- [x] Free flight controls: `web/src/core/flight-controls.js`. Forward moves the radius
+  geometrically — `d·e^(rate·t)` — so the same keys cover the same fraction of the view at 1 AU and
+  at 100 kpc, and two half-steps equal one whole step exactly. Strafe and lift change bearing and
+  elevation, leaving the radius alone. Verified in a browser: W grows the distance, the waypoint
+  reads `free flight` as the route pauses, and Shift boosts ~10×; the advertised gain (1.419/s) is
+  the gain you actually get.
 - [ ] `[TODO]` Guided journeys: scripted cinematic routes (Sol → nearest star → galactic center →
   Local Group) authored as data, with an optional auto-fly mode.
 - [ ] `[TODO]` Search: name lookup against the baked index, with a flight path to the result.

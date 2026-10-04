@@ -24,6 +24,13 @@ import { createSparkLayers } from './render/sparks.js';
 import { METRES_PER_PC } from './core/units.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
+import { FlightController, inputFromKeys } from './core/flight-controls.js';
+const flight = new FlightController();
+const keys = new Set();
+let freeFlight = false;
+window.addEventListener('keydown', (event) => keys.add(event.key.toLowerCase()));
+window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+window.addEventListener('blur', () => keys.clear());
 
 const TILE_DIR = '../assets/tiles';
 let reticle = null;
@@ -42,6 +49,7 @@ const hud = document.getElementById('hud');
 const atlas = new AtlasScene({ canvas, aspect: 1 });
 window.__atlas = atlas;
 atlas.budget = budget;
+atlas.flight = flight;
 atlas.route = route;
 const backdrop = new Backdrop({
   fields: DEEP_FIELDS,
@@ -99,14 +107,24 @@ async function start() {
     const measured = Math.max(0, (now - previous) / 1000);
     const delta = Math.min(measured, 0.1);
     previous = now;
-    routeTime += delta;
-    const shot = route.sample(routeTime);
-    atlas.rig.positionMetres = shot.positionMetres;
-    // The route says where to face: a deep field, or outward along the route.
-    const look = anglesFromDirection(shot.lookDirection);
-    atlas.rig.lookAtAngles(look.yaw, look.pitch);
-    atlas.stats.waypoint = shot.name;
-    atlas.stats.routeSeconds = routeTime;
+    // Free flight takes over the moment a key is held: the route pauses and the
+    // speed law applies unchanged from 1 AU to 100 kpc.
+    flight.input(inputFromKeys(keys));
+    if (flight.engaged) freeFlight = true;
+
+    if (freeFlight) {
+      atlas.rig.resetDrift();
+      atlas.rig.positionMetres = flight.step(delta, atlas.rig.positionMetres);
+      atlas.stats.waypoint = 'free flight';
+    } else {
+      routeTime += delta;
+      const shot = route.sample(routeTime);
+      atlas.rig.positionMetres = shot.positionMetres;
+      // The route says where to face: a deep field, or outward along the route.
+      const look = anglesFromDirection(shot.lookDirection);
+      atlas.rig.lookAtAngles(look.yaw, look.pitch);
+      atlas.stats.waypoint = shot.name;
+    }
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
     refreshViewRange();
     atlas.frame(delta, measured);

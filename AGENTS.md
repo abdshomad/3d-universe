@@ -124,3 +124,7 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   drift, so the "constant slow drift" in the art direction never actually ran. Verified live: drift
   grows 0.0053 to 0.0137 rad across a segment while the base angle follows the beats. Sub-plan 03 is
   complete; 140/140 tests pass.
+- 2026-10-04 — `n` #22 (sub-plan 04): free flight. Forward integrates the radius exactly as
+  d·e^(rate·t) rather than by Euler step, so two half-steps equal one whole step and the gain the
+  HUD advertises is the gain you get. Verified in the browser: W grows the distance, the waypoint
+  reads 'free flight' while the route is paused, Shift boosts about ten times. 149/149 tests pass.
