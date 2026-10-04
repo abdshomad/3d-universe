@@ -18,6 +18,11 @@ import { assertCited, citableRelations, relationStyle } from '../data/relations.
 import { createRibbonMesh } from './ribbons.js';
 
 const DEFAULT_TOLERANCE_DEG = 0.35;
+// Ten arcminutes. `nearest` will hand back anything inside 0.35° — 21′ — and a
+// figure point is the position of a specific star, so matches worse than this
+// assert a pairing the figure does not make. They are dropped and counted.
+// This must stay below nearest's own tolerance or the check can never fire.
+const MAX_END_SEPARATION_ARCSEC = 600;
 
 /** Index of measured stars by direction, for nearest-in-angle lookups. */
 export class StarIndex {
@@ -60,7 +65,17 @@ export class StarIndex {
         bestIndex = i;
       }
     }
-    const found = bestIndex >= 0 && best >= cosTolerance ? this.positions[bestIndex] : null;
+    // Half the chord, not acos: acos loses its digits when the angle is small,
+    // which is exactly the case that decides whether a match is exact.
+    const chord = Math.hypot(
+      this.directions[3 * bestIndex] - target[0],
+      this.directions[3 * bestIndex + 1] - target[1],
+      this.directions[3 * bestIndex + 2] - target[2],
+    );
+    const separationArcsec = 2 * Math.asin(Math.min(1, chord / 2)) * (180 / Math.PI) * 3600;
+    const found = bestIndex >= 0 && best >= cosTolerance
+      ? { position: this.positions[bestIndex], separationArcsec }
+      : null;
     this.cache.set(key, found);
     return found;
   }
@@ -83,6 +98,7 @@ export function buildRelationRibbons({
   maxRibbons = 400,
   curve = 0.14,
   originMetres = [0, 0, 0],
+  maxSeparationArcsec = MAX_END_SEPARATION_ARCSEC,
 }) {
   const cited = citableRelations(
     relations.map((relation) => ({ ...relation, citation: relation.citation ?? citation })),
@@ -91,6 +107,8 @@ export function buildRelationRibbons({
   const meshes = [];
   let attempted = 0;
   let matchedEnds = 0;
+  let droppedTooLoose = 0;
+  let worstSeparationArcsec = 0;
 
   for (const relation of cited) {
     assertCited(relation);
@@ -99,12 +117,20 @@ export function buildRelationRibbons({
       if (meshes.length >= maxRibbons) break;
       attempted += 1;
       const start = index.nearest(segment[0][0], segment[0][1]);
-      const end = index[segment.length - 1] ? endOf(segment) : null;
       const finish = index.nearest(segment[segment.length - 1][0], segment[segment.length - 1][1]);
       if (!start || !finish) continue;
       matchedEnds += 2;
+      // A figure point is the position of a real star. If the nearest star we
+      // hold is further than this, the line would join two stars the figure
+      // does not name — so it is not drawn, and the loss is counted.
+      const separation = Math.max(start.separationArcsec, finish.separationArcsec);
+      if (separation > maxSeparationArcsec) {
+        droppedTooLoose += 1;
+        continue;
+      }
+      if (separation > worstSeparationArcsec) worstSeparationArcsec = separation;
       const mesh = createRibbonMesh({
-        points: [toRenderSpace(start, originMetres), toRenderSpace(finish, originMetres)],
+        points: [toRenderSpace(start.position, originMetres), toRenderSpace(finish.position, originMetres)],
         colour: style.colour,
         width: widthMetres,
         alpha,
@@ -114,6 +140,7 @@ export function buildRelationRibbons({
       });
       mesh.userData.citation = citation;
       mesh.userData.relationType = relation.type;
+      mesh.userData.endSeparationArcsec = Number(separation.toFixed(1));
       meshes.push(mesh);
     }
   }
@@ -125,6 +152,8 @@ export function buildRelationRibbons({
       attempted,
       drawn: meshes.length,
       matchedEnds,
+      droppedTooLoose,
+      worstSeparationArcsec: Number(worstSeparationArcsec.toFixed(1)),
       starsIndexed: index.size,
     },
   };

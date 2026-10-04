@@ -11,28 +11,44 @@ integrity](next-enhancements.md) · [E3 download the slice](next-enhancements.md
 
 ## E4 — Constellation vertices must resolve to a measured star
 
-**Why now.** PRD feature 4 says every edge is a cited relation, and the citation is there:
-`d3-celestial`, derived from Stellarium. But the *vertices* are not catalogue rows. Each of the 89
-figures is a list of raw RA/Dec pairs, and the layer draws a line between positions that resolve to
-nothing in any tile. This is the same defect class as the stale card that named an undrawn star, and
-it is shipped in every session.
+**Status: done as far as the data allows, 2026-10-05** — and the first thing to record is that my
+original framing was wrong. The renderer never placed vertices at assumed positions: it calls
+`index.nearest(ra, dec)` and draws between the *measured* stars it finds. Every ribbon already joins
+two real catalogue rows.
 
-Measured today: **893 vertices across 89 figures. 339** have a measured star within 10″ of the
-position the figure gives them; **554 do not**, with a median separation of 138″ and a tail out to
-degrees. Constellation figures span the whole sky, and most of their stars sit far outside the
-200 pc neighbourhood tile we bake.
+The real defect is subtler and worse. `nearest` accepted any match within **0.35° — 21 arcminutes**.
+Of 300 segment endpoints, only 113 (38%) match within 10″; the median is 289″ and the 90th
+percentile is 2,318″. So most ribbons were joining a star the figure does not name, while the
+citation on the layer implies the relation is real. A wrong relation asserted confidently is a worse
+failure than a missing one, and this one was in every session.
 
-**Scope.** Ingest the figure stars as a real, provenance-carrying set rather than trusting
-coordinates: query the catalogue for the stars at the figure positions, match each vertex to the
-row it names, and bake them with their measured parallaxes. A vertex with no measured match is
-either dropped or badged — never drawn as though it were measured.
+**What changed.** `nearest` now reports the separation it accepted. A ribbon whose worst end is worse
+than **600″** is dropped and counted, because a figure point is the position of a specific star and
+10′ is already a poor claim. Each drawn mesh records its own `endSeparationArcsec`, and the report
+names the worst match it kept. Verified live: 89 cited figures, 150 segments attempted, **50 drawn**,
+**27 dropped as too loose**, worst match kept 536″, no console errors.
 
-**Invariant that matters.** A figure line is drawn between two *measured* stars or not at all. If
-the vertex set and the star set can drift apart, the layer will quietly start drawing lines to
-positions again, and nothing will notice.
+**What that costs.** The layer now covers a third of its segments instead of most of them. That is
+the honest price: the other two thirds were asserting pairings up to 21′ off. The report says so
+rather than hiding it.
 
-**Exit.** Every drawn vertex resolves through the same identity path a click uses. A vertex with no
-catalogued star is reported, not silently placed.
+**Recovery is blocked on catalogue access, not on design.** Three Gaia probes failed — a 0.05° patch
+and a 12°×26° box both returned nothing in 90–120 s. SIMBAD answers in about a second but its ADQL
+rejected every geometry and magnitude form tried (`CONTAINS`/`POINT`/`CIRCLE`, `flux(V)` in `WHERE`).
+VizieR's Bright Star Catalogue answered minimal queries in 1–3 s and is the next thing to try: one
+query for 9,110 naked-eye stars, matched locally, one-to-one, dropping any segment with an unmatched
+vertex. The mechanism is about forty lines and its policy is written out above; it is not in the tree
+because nothing calls it yet, and shipping uncalled code is how it rots.
+
+**Two things worth keeping from the work.** `relation-layer.js` had **no tests at all** — the
+matching logic that makes every claim in the knowledge graph had never been executed by the suite.
+There are six now, covering match quality, the drop, the count and the worst-case report.
+
+And the crash they found was mine, not inherited. `HEAD` carried
+`index[segment.length - 1] ? endOf(segment) : null` — harmless, because indexing a `StarIndex` by a
+number is always `undefined`, so the call never ran. Rewriting that condition to
+`segment[segment.length - 1]` made it live and threw `ReferenceError` on every ribbon build. The new
+tests caught it in the same minute. The whole dead statement is gone.
 
 ---
 
