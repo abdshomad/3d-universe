@@ -10,6 +10,7 @@ import { Raycaster, Vector2, Vector3 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
 import { attachPlanets, planetRows } from './data/exoplanets.js';
+import { attachDoubles } from './data/doubles.js';
 import { figureCitation, figureStarPositions } from './data/figure-stars.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { Cinematic } from './core/cinematic.js';
@@ -93,6 +94,7 @@ let reticle = null;
 let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
 const FIGURE_STAR_DIR = '../assets/relations/figure-stars.json';
+const DOUBLE_DIR = '../assets/relations/binaries.json';
 const EXOPLANET_DIR = '../assets/relations/exoplanets.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
@@ -238,6 +240,15 @@ async function start() {
   const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
   starIndex = new StarIndex(biggest.worldPositions);
   starIndex.tile = biggest;
+
+  const doublePayload = await loadJson(DOUBLE_DIR).catch(() => null);
+  if (doublePayload) {
+    doubleReport = attachDoubles(doublePayload);
+    atlas.stats.doubles = doubleReport.pairs;
+    atlas.stats.doublesMedianSep = doubleReport.medianSeparationArcsec;
+    atlas.stats.doublesOnStars = doubleReport.byStar.size;
+    atlas.stats.doublesUnattached = doubleReport.unresolved;
+  }
 
   exoplanetPayload = await loadJson(EXOPLANET_DIR).catch(() => null);
   if (exoplanetPayload) {
@@ -411,6 +422,7 @@ const captionEl = document.getElementById('caption');
 let captionShown = null;
 let figureStarIndex = null;
 let figureStarPayload = null;
+let doubleReport = null;
 /**
  * The cinematic path, read off the route we already fly: each waypoint as it is
  * first reached, with a hold so the eye can catch up with the scale.
@@ -988,6 +1000,7 @@ function hudSelection() {
     kind: 'star',
     id: selection.id,
     planets: exoplanetReport?.byStar.get(index)?.planets ?? null,
+    doubles: doubleReport?.byStar.get(index) ?? null,
     distancePc: selection.world.length() / METRES_PER_PC,
     magnitude: tile.magnitudes ? tile.magnitudes[index] / 1000 : null,
     colorIndex: null,

@@ -69,6 +69,34 @@ draw the separation arc where one component is known, and that arc is the strong
 the layer while being the least supported.
 
 **Exit.** Every drawn pair has both components resolving to catalogue rows, with its separation and
+
+**Status: done, 2026-10-05, with no edges drawn — deliberately** —
+`ingest/sources/doubles.py` takes the naked-eye WDS catalogue, derives each secondary's position from
+the primary plus its separation and position angle, and keeps only pairs whose **both** components
+match a measured row within 30″. Result: **2,885 pairs** of 28,516 candidates, attaching to **3,080
+stars**; 23 pairs with no tile row are counted rather than dropped.
+
+**No edge is drawn, and the measurement says why.** The median separation is **5.1 arcseconds**. At
+100 pc that is a fraction of a pixel, so an edge between the components would have no visible length and
+one drawn at exaggerated scale would be a diagram pretending to be a measurement. The same call as
+E5's exoplanet orbits, for the same reason. A double is a fact about its stars: the card names the
+companion, the separation in arcseconds, and the WDS number.
+
+**Three bugs in the ingest, each of which quietly produced a plausible number.**
+
+1. *WDS gives the primary's position, not a pair centre.* Interpreting `RAJ2000`/`DEJ2000` as the centre
+   and offsetting both components resolves **7,091** component positions; reading it as the primary
+   and offsetting only the secondary resolves **9,746**. Both were measured, not assumed.
+2. *`sep1 = 999.9` means "unknown", not "far".* It is greater than zero, so a `sep1 > 0` filter admits
+   it and puts the secondary 16 arcminutes away on invented geometry. One "resolved" pair was exactly
+   this.
+3. *The tile's positions are 16-bit, and I read them as one byte each.* Every coordinate was garbage:
+   **zero** of 400 reference stars matched under any axis permutation. With the fix, 292 of 400
+   match — the expected rate, since some naked-eye stars lie beyond the tile's 200 pc. That one bug
+   moved the result from **34 pairs to 2,885**.
+
+The matcher is also indexed by sky cell. Comparing every candidate against every star is 523 million
+comparisons in pure Python, which timed out at 280 seconds; bucketed, the same ingest takes 5.4 s.
 catalogue identifier reported, and the count of omitted pairs stated rather than hidden.
 
 ---

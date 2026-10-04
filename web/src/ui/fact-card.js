@@ -48,6 +48,14 @@ function card(name, rowPairs, provenance, extra = {}) {
  * Planets confirmed around this star. Their positions are derived from the
  * archive's distance rather than astrometric, so the row says which is which.
  */
+/** Catalogued doubles: the companion, the separation, and the catalogue. */
+function doublesRow(doubles) {
+  if (!doubles || doubles.length === 0) return null;
+  const nearest = [...doubles].sort((a, b) => a.separationArcsec - b.separationArcsec)[0];
+  const more = doubles.length > 1 ? ` +${doubles.length - 1} more` : '';
+  return ['catalogued doubles', `${nearest.companion}${more} at ${nearest.separationArcsec}\u2033 \u2014 WDS ${nearest.wds}`];
+}
+
 function planetRow(planets) {
   if (!planets || planets.length === 0) return null;
   const names = planets.slice(0, 3).map((planet) => {
@@ -66,11 +74,13 @@ export function cardForStar(selection, { observerYear } = {}) {
   if (!selection) return null;
   const light = lightRow(selection.distancePc, observerYear);
   const planets = planetRow(selection.planets);
+  const doubles = doublesRow(selection.doubles);
   return card(selection.name ?? `gaia ${selection.id}`, [
     ['catalogue id', selection.id],
     ['distance', formatDistance(selection.distancePc)],
     ['apparent mag', formatNumber(selection.magnitude, 2)],
     ['colour index B-V', formatNumber(selection.colorIndex, 2)],
+    ...(doubles ? [doubles] : []),
     ...(planets ? [planets] : []),
     ...(light ? [light] : []),
   ], selection.provenance ?? 'esa.gaia DR3 · U3DTILE2 · measured');
