@@ -29,6 +29,25 @@ the same error as calling a modelled cell a galaxy.
 
 **Exit.** A click on a spark selects it, names it, and shows a card that distinguishes the measurement.
 
+**Status: done, 2026-10-05** — the spark layers record which catalogue row each vertex belongs to.
+That mapping is recorded rather than inferred: an event with no position is skipped, so a vertex index
+is *not* an event index without it, and a test pins the case where the second event in the catalogue is
+the third drawn.
+
+Events are picked **before** stars. Sparks are drawn with `depthTest: false` and `renderOrder: 15`, so
+they sit on top of the stars behind them; picking in a different order would let a click name a star
+the viewer cannot see. My first implementation had the comment right and the code backwards.
+
+Verified live by sweeping the sky at 1 kpc and clicking: `pulsar:B0906-17` selects, and the card gives
+the kind, the flux at 400 MHz, the period, the age, the distance *and its source*, and the ATNF
+citation. Period, flux and age are kept distinct because they are different kinds of measurement.
+
+**The card was disagreeing with the sky.** A pulsar placed from a dispersion measure has
+`distance_kpc` and no `distance_pc`, so the card showed a dash for a pulsar that is visibly drawn at a
+position — the layer placed it by one field and the card quoted another. The card now quotes
+`distance_kpc` when that is what the layer used, so the two agree, and still names whether that
+distance came from a parallax or a dispersion measure.
+
 ---
 
 ## E11 — Binary pairs, from a catalogue that answers
@@ -83,24 +102,5 @@ selection is unknown instead of rendering an empty card.
 - **A bulk DESI mirror.** Unchanged: the tier stays generated until `data.desi.lbl.gov` answers, at
   which point the badge flips back on the same tile format and nothing else changes.
 - **Wide binaries from astrometry.** E11 is about *catalued visual doubles*, which is a different and
-
-**Status: done, 2026-10-05** — the spark layers record which catalogue row each vertex belongs to.
-That mapping is recorded rather than inferred: an event with no position is skipped, so a vertex index
-is *not* an event index without it, and a test pins the case where the second event in the catalogue is
-the third drawn.
-
-Events are picked **before** stars. Sparks are drawn with `depthTest: false` and `renderOrder: 15`, so
-they sit on top of the stars behind them; picking in a different order would let a click name a star
-the viewer cannot see. My first implementation had the comment right and the code backwards.
-
-Verified live by sweeping the sky at 1 kpc and clicking: `pulsar:B0906-17` selects, and the card gives
-the kind, the flux at 400 MHz, the period, the age, the distance *and its source*, and the ATNF
-citation. Period, flux and age are kept distinct because they are different kinds of measurement.
-
-**The card was disagreeing with the sky.** A pulsar placed from a dispersion measure has
-`distance_kpc` and no `distance_pc`, so the card showed a dash for a pulsar that is visibly drawn at a
-position — the layer placed it by one field and the card quoted another. The card now quotes
-`distance_kpc` when that is what the layer used, so the two agree, and still names whether that
-distance came from a parallax or a dispersion measure.
   weaker claim than a measured orbit. Gaia's neighbour table would give the stronger one and remains
   unreachable — three probes, nothing in 90–120 seconds.
