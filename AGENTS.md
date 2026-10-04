@@ -109,3 +109,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   locks onto the nearest measured star to the view centre (Gaia 5262578111591082240 in the
   browser check). Selection is centre-lock for now; click-picking belongs to sub-plan 04.
   124/124 tests pass.
+- 2026-10-04 — `n` #19 (sub-plan 03): spark markers from the ATNF pulsar catalogue. Two ingestion
+  bugs cost most of this one, both silent: VizieR pads its columns with spaces, so parsing on
+  whitespace split RA `00 06 04.80` into three tokens and shifted every field; and the response
+  starts with a blank line, so the first line taken as a header parsed every row to {}. Distances
+  carry their provenance - parallax or dispersion measure - all the way to the fact card. 130/130
+  tests pass.

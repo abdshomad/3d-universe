@@ -21,11 +21,17 @@ import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
+import { createSparkLayers } from './render/sparks.js';
+import { celestialDirection } from './core/celestial.js';
+import { METRES_PER_PC } from './core/units.js';
 
 const TILE_DIR = '../assets/tiles';
 let reticle = null;
 let selection = null;
 const RELATION_DIR = '../assets/relations/constellations.json';
+const EVENT_DIR = '../assets/events/pulsars.json';
+let eventPayload = null;
+let sparkLayers = [];
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
 let routeTime = 0;
@@ -75,11 +81,11 @@ async function start() {
     tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
   }
   relationPayload = await loadJson(RELATION_DIR).catch(() => null);
-  if (relationPayload) {
-    const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
-    starIndex = new StarIndex(biggest.worldPositions);
-    starIndex.tile = biggest;
-  }
+  eventPayload = await loadJson(EVENT_DIR).catch(() => null);
+
+  const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
+  starIndex = new StarIndex(biggest.worldPositions);
+  starIndex.tile = biggest;
 
   atlas.rig.positionMetres = route.sample(0).positionMetres;
   redraw();
@@ -193,6 +199,41 @@ function rebuildMediums(scale) {
   );
   rebuildRibbons(scale);
   rebuildReticle();
+  rebuildSparks(scale);
+}
+
+/** Event markers. An event is only placed when the catalogue gives a distance:
+ *  a sky position with no distance is a direction, not a place. */
+function rebuildSparks() {
+  for (const layer of sparkLayers) {
+    atlas.scene.remove(layer);
+    layer.geometry.dispose();
+    layer.material.dispose();
+  }
+  sparkLayers = [];
+  if (!eventPayload) return;
+
+  const origin = atlas.origin.originMetres;
+  const worldPositions = new Map();
+  for (const event of eventPayload.events) {
+    const distance = event.distance_kpc ? event.distance_kpc * 1000 * METRES_PER_PC : null;
+    if (!distance) continue;
+    const direction = celestialDirection(event.ra_deg, event.dec_deg);
+    worldPositions.set(event.id, [
+      direction[0] * distance - origin[0],
+      direction[1] * distance - origin[1],
+      direction[2] * distance - origin[2],
+    ]);
+  }
+
+  sparkLayers = createSparkLayers({
+    events: eventPayload.events,
+    worldPositions,
+    citation: eventPayload.citation,
+  });
+  for (const layer of sparkLayers) atlas.scene.add(layer);
+  atlas.stats.events = sparkLayers.reduce((total, layer) => total + layer.userData.count, 0);
+  atlas.stats.eventPlaced = worldPositions.size;
 }
 
 /** Nearest measured star to the view centre: the object the reticle locks onto. */

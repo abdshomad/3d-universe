@@ -37,7 +37,11 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   uncertainty ellipse, drawn as line segments so the stroke is a screen-space pixel at every scale.
   The reticle locks onto the nearest *measured* star to the view centre; verified in a browser on
   Gaia `5262578111591082240`, one reticle in the scene, no console errors.
-- [ ] `[TODO]` **Spark markers**: colored `+` glyphs for transient/event objects (pulsar, FRB, GW).
+- [x] **Spark markers**: `ingest/sources/events.py` + `web/src/render/sparks.js`. 2,530 pulsars
+  ingested from the ATNF catalogue via VizieR, each carrying measured 400 MHz flux, period, age and a
+  distance **labelled by how it was derived** — parallax or dispersion measure. Glyph size follows the
+  measured flux. An event with no catalogue distance is not placed: 583 of 598 are drawn, the rest
+  have a direction but no place.
 - [ ] `[TODO]` **HUD**: title lockup, thin top nav, fact card, boxed readout, provenance badge.
 - [ ] `[TODO]` **Camera grammar**: constant slow drift, exponential scale changes, no cuts.
 
