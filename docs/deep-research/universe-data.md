@@ -77,6 +77,23 @@ geometry source — v1 consumes periodic data releases, never the firehose.
 **DESI** — completed its planned five-year survey April 2026, >47 million galaxies and quasars mapped
 in 3D, continued operations. This is the reference T3 LSS dataset for large-scale structure.
 
+**DESI public data path — probed 2026-10-04, and it is not ingestible from here.**
+
+| | |
+|---|---|
+| Portal | `https://data.desi.lbl.gov/public/dr1/` (reachable, HTTP 200) |
+| LSS catalogues | `survey/catalogs/dr1/LSS/{iron,random0..17,altmtl}/datcomb_*_tarspecwdup_zdone.fits` |
+| Licence | **CC BY 4.0**; credit required to DESI Collaboration *et al.* (2025), arXiv:2503.14745, plus the acknowledgements text |
+| One region, ELG | **16.25 GB** |
+| One region, LRG | **5.48 GB** |
+| Whole DR1 LSS set | hundreds of GB |
+| CosmoDC2 density cubes | **unreachable** from this host (connection fails, all three URLs) |
+
+So the atlas cannot ingest real survey galaxies, and the usual pre-aggregated alternative is not
+reachable either. Anything drawn at 500 Mpc from this build must therefore be **generated**, and
+labelled `SIMULATED`, with DESI DR1 cited as the *science reference* for what real structure looks
+like — never as the source of the pixels.
+
 **Euclid** — Q1 2025-03-19, Q2 2026-06-24. Optical + near-infrared, wide survey.
 
 **Nancy Roman** — launch 2026 (Falcon Heavy, LC-39A; NASA launch updates as of 2026-08-30).

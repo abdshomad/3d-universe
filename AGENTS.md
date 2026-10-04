@@ -167,3 +167,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   hostile fragment is ignored, not flown to. The browser caught three wiring bugs the unit tests
   could not: the route overwrote the restored position, the link spoke degrees while the rig speaks
   radians, and the selection id was serialised as a truncated number. 205/205 tests pass.
+- 2026-10-04 — `n` #31 (sub-plan 05): DESI probe. The public path is reachable and documented
+  (CC BY 4.0, citation arXiv:2503.14745), but one region is 16.25 GB (ELG) and 5.48 GB (LRG) and
+  CosmoDC2 is unreachable from this host. That overturns a locked PRD decision: the 500 Mpc tier is
+  generated and badged SIMULATED, not ingested survey galaxies badged SURVEY/STATISTICAL. The
+  sub-plan and the research doc now say so, and the stale 'DESI galaxies are measured' note is gone.
