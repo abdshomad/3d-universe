@@ -59,6 +59,17 @@
         background: rgba(5, 6, 10, 0.55); }
       #readout .label { display: block; color: var(--ink-dim); font-size: 9px; letter-spacing: 0.2em; }
       #readout .value { color: #c6cad2; font-size: 12px; letter-spacing: 0.12em; }
+      /* The HUD ignores the pointer so drags reach the sky, but the three
+         things a viewer can operate must take it back. Without this the search
+         box and the epoch slider look live and are not: clicks land on the
+         canvas behind them. */
+      #search, #export, #epoch { pointer-events: auto; }
+
+      #export { position: absolute; bottom: 18px; left: 16px; padding: 6px 11px;
+        background: rgba(5, 6, 10, 0.55); border: 1px solid rgba(138, 143, 152, 0.22);
+        color: var(--ink-dim); font: inherit; font-size: 9px; letter-spacing: 0.2em;
+        text-transform: uppercase; cursor: pointer; }
+      #export:hover { color: #c6cad2; border-color: rgba(198, 202, 210, 0.5); }
 
       #badge { position: absolute; bottom: 18px; right: 16px; padding: 6px 11px;
         border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2; letter-spacing: 0.22em; }
@@ -106,6 +117,8 @@
         <div><span class="label">distance range</span><span class="value" data-hud="distance">—</span></div>
         <div><span class="label">data source</span><span class="value" data-hud="source">none</span></div>
       </div>
+      <button id="export" data-hud="export" type="button">download this slice as csv</button>
+
 
       <div id="hint"></div>
       <div id="epoch-line">sky epoch —</div>

@@ -96,6 +96,29 @@ measured one. A `flag` column that reads `SIMULATED` for every row the tier gene
 **Exit.** Export at 10 kpc produces rows whose provenance strings match the on-screen cards exactly,
 and every modelled row is flagged. Verified by reading the file back.
 
+**Status: done, 2026-10-04** — `web/src/core/export.js` builds the slice; `main.js` runs
+`assertFlagged` before anything is written, so a row that cannot say what it is never reaches the
+file. Verified by reading the file back. At 10 kpc: `atlas-slice-6918p.csv`, 6,918 rows, every
+provenance string byte-identical to the on-screen card. At 200 Mpc: 49,410 rows, which is exactly
+the number of cells drawn on screen, every one flagged `SIMULATED` and citing DESI DR1 as the
+science reference with *not a survey map* in the string.
+
+**Two bugs this found, both worth the feature.**
+
+1. *The export claimed more than the screen showed.* It emitted 350,618 modelled cells where the
+   renderer draws 49,410, because it walked every non-zero cell rather than the ones above the draw
+   threshold. An export that describes a sky nobody is looking at is the same class of lie as a card
+   that names an undrawn star. It now takes the live threshold from the visible layer, and the test
+   asserts the difference is exactly the faint cells.
+2. *The search box was never clickable.* `#hud` sets `pointer-events: none` so drags reach the sky,
+   and neither `#search` nor `#epoch` took the pointer back — a real mouse click landed on the canvas
+   behind them. My earlier verification typed into the field with `fill()`, which sets the value
+   directly and never hit-tests, so I had "verified" a control that could not be operated. The
+   export button inherited the defect, which is how it surfaced. Fixed for all three.
+
+The second one is the reason I now click with a real mouse before believing anything about the UI.
+Automation that bypasses hit-testing will happily confirm a control works when no user could press it.
+
 ---
 
 ## Not now, and why

@@ -8,6 +8,7 @@
 
 import { Raycaster, Vector2 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
+import { assertFlagged, buildSlice, toCsv } from './core/export.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { identityAt, isClick, pickFromHits } from './core/picker.js';
 import { LodTree } from './core/lod-tree.js';
@@ -81,6 +82,14 @@ let activeRouteName = 'scale out';
 let routeTime = 0;
 
 const canvas = document.getElementById('view');
+document.getElementById('export')?.addEventListener('click', () => {
+  try {
+    downloadSlice();
+  } catch (error) {
+    // A refused export must say why rather than writing a file that lies.
+    atlas.stats.exportError = error.message;
+  }
+});
 const hud = document.getElementById('hud');
 
 const atlas = new AtlasScene({ canvas, aspect: 1 });
@@ -249,6 +258,34 @@ async function start() {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
+}
+
+/**
+ * Export what is on screen. The gate runs before anything is written: a row that
+ * cannot say whether it was measured or modelled does not reach the file.
+ */
+function downloadSlice() {
+  const slice = buildSlice({
+    starIndex,
+    drawnPoints: atlas.stats.points,
+    originMetres: atlas.origin.originMetres,
+    field: atlas.stats.lssVisible ? lssField : null,
+    level: lssLevel,
+    // Whatever the renderer decided to draw is what the file must contain.
+    threshold: lssLevels.find((layer) => layer.visible)?.userData.threshold ?? 0,
+  });
+  assertFlagged(slice.rows);
+
+  const csv = toCsv(slice.columns, slice.rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `atlas-slice-${Math.round(atlas.stats.points)}p.csv`;
+  link.click();
+  URL.revokeObjectURL(url); // the click has taken its own reference by now
+  atlas.stats.exported = slice.rows.length;
+  return slice.rows.length;
 }
 
 /**

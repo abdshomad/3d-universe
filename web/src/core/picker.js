@@ -33,7 +33,7 @@ export function pickFromHits(hits, { tileId = null } = {}) {
 }
 
 /** Decode one position into metres, relative to `originMetres`. */
-function positionAt(tile, index, originMetres) {
+export function positionAt(tile, index, originMetres) {
   const scale = UNIT_METRES[tile.header.unit];
   if (!scale) throw new RangeError(`unsupported unit ${tile.header.unit}`);
   return [0, 1, 2].map((axis) => tile.header.origin[axis] * scale
