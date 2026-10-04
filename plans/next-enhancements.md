@@ -1,36 +1,77 @@
-# Next Enhancements
+# Next enhancements
 
-PRD decomposed into tasks per module, per the `e` step of the inex flywheel. Ordered by value per
-unit of effort. Phase 1 lives in [`phase-1.md`](phase-1.md) and is not repeated here.
+Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after sub-plan 05 closed,
+2026-10-04. Three enhancements, each with an exit criterion a browser can falsify. Ordered by how
+much they close the project's stated promises — not by how easy they are.
 
-## T2 — Galactic structure
+---
 
-- [ ] `[TODO]` 3D dust/extinction volume (Planck + Gaia-based maps) rendered as a volumetric medium —
-  the Milky Way becomes a place with an interior, not a backdrop.
-- [ ] `[TODO]` HI 21 cm / Galactic plane layer: warp and flare structure at radio wavelengths.
-- [ ] `[TODO]` Spiral-arm parameterization as measured objects (not decoration) with citations.
+## E1 — Object picking: click a light, read its card
 
-## T3 — Large-scale structure (phase 1, see sub-plan 05)
+**Why now.** PRD core feature 7 says *every selection shows a fact card*. Today a selection only
+exists after you type a name: search resolves a HIP, the route flies there, the card appears. A
+click — the most natural gesture in a 3D atlas — does nothing. I deferred this while building the
+cards, and it is now the largest gap between what the PRD promises and what the app does.
 
-- [ ] `[TODO]` Cosmological context view: switch from "place" to "slice" mode with a redshift ruler.
-- [ ] `[TODO]` Euclid + Roman wide-field footprint overlays once Roman is on sky.
+**Scope.** A raycast against the star layers and the spark layers, resolving a hit to a catalog
+identity, setting the reticle, and routing the card. Hover is out of scope: click only, so the
+gesture is unambiguous while flight controls are live.
 
-## Multimessenger — events
+**Invariant that matters.** A pick resolves through the *same* `SearchIndex` the search box uses.
+If a click can name a star the search box cannot, or vice versa, the two disagree about identity —
+which is precisely the bug class this project exists to prevent.
 
-- [ ] `[TODO]` GWTC-4.0 events as spark markers with sky-localization annuli (128 new O4a candidates
-  available now).
-- [ ] `[TODO]` Pulsar / CHIME-FRB / NANOGrav anchors with timing data; FRB burst markers.
-- [ ] `[TODO]` Event layer tied to the fact card: "observed at", "localized to", "distance".
+**Exit.** A click on a lit spark selects it, names it, and shows a card; a click on empty sky clears
+the selection. Verified in the browser, both ways.
 
-## Data & infrastructure
+---
 
-- [ ] `[TODO]` Gaia DR4 re-bake on release day (2026-12-02) with a catalog-diff report.
-- [ ] `[TODO]` Rubin data-release ingestion (periodic releases; never the 10 M alerts/night firehose).
-- [ ] `[TODO]` HEASARC re-probe and mirror path (TAP timed out from the build host).
+## E2 — Manifest integrity: every rendered light resolves to a catalog row
 
-## Experience
+**Why now.** This is Phase 1 exit criterion 2 and the project's central promise: *every rendered
+measured object resolves to a catalog row*. It has never been asserted anywhere. Prose about
+provenance is not a guarantee; a check is.
 
-- [ ] `[TODO]` Guided journeys beyond Phase 1: exoplanet tour, supernova light curves, CMB zoom-out.
-- [ ] `[TODO]` Compare mode: two objects side by side with matched fields of view.
-- [ ] `[TODO]` Screenshot/export pipeline: capture a frame with a citation block, art-directed like the
-  references.
+**Scope.** Two assertions. Offline: for every baked tile, the manifest's `count` matches the tile
+header and the file's `sha256` matches the bytes on disk — so a stale manifest cannot ship. Online:
+every star currently drawn resolves, through `SearchIndex`, to an entry with a distance, a magnitude
+and a provenance string.
+
+**Invariant that matters.** The check must run against the *rendered* set, not the tile's nominal
+count. A tile that claims 60,000 stars and yields 58,412 resolvable ones is exactly the failure
+worth catching.
+
+**Exit.** The integrity check runs in CI over the baked assets and reports zero unresolved stars at
+three scales (10 pc, 10 kpc, 1 Mpc). A deliberately corrupted tile fails it.
+
+---
+
+## E3 — Download the slice
+
+**Why now.** PRD user 3 is *scientist-adjacent — checks that positions and provenance are correct,
+and can download the slice.* Two of three verbs are shipped. The third is the one that makes the
+first two checkable, and it is small once provenance is already first-class in the card.
+
+**Scope.** A button that exports exactly what is on screen as CSV: id, RA/Dec or baked Cartesian
+position, magnitude, colour index, distance in pc, light-travel years, and the provenance string.
+Nothing synthesised is exported without its flag in a column of its own.
+
+**Invariant that matters.** The export must not be able to launder a modelled object into a
+measured one. A `flag` column that reads `SIMULATED` for every row the tier generated, and
+`MEASURED` for catalogue rows, is not decoration — it is the export's contract.
+
+**Exit.** Export at 10 kpc produces rows whose provenance strings match the on-screen cards exactly,
+and every modelled row is flagged. Verified by reading the file back.
+
+---
+
+## Not now, and why
+
+- **Cinematic auto-fly mode** (locked decision 5). The journey builder and the opening already give
+  an authored camera path; a separate cinematic mode is presentation on top of machinery that
+  exists. Better spent after picking, which it would need to feel complete.
+- **A bulk DESI mirror.** Noted in sub-plan 05 as a locked assumption change: the tier stays
+  generated until a real mirror is reachable. Revisit only if `data.desi.lbl.gov` answers.
+- **Exoplanet and binary relations.** The relation layer carries constellation lines today. The
+  ingest for host–planet pairs is unbuilt, and inventing edges without a cited source would violate
+  the knowledge-graph rule that every edge is a relation we can name.

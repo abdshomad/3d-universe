@@ -18,7 +18,7 @@ Parent plan. Split into sub-plans because the full plan does not fit one readabl
 | 02 | [`02-atlas-engine.md`](phase-1/02-atlas-engine.md) | 01 | **done** — scale-spanning renderer, LOD, post chain, routes, perf harness |
 | 03 | [`03-visual-language.md`](phase-1/03-visual-language.md) | 02 | **done** — deep field, nebulosity, dust, measured stars, relations, reticles, sparks, HUD |
 | 04 | [`04-experience.md`](phase-1/04-experience.md) | 03 | **done** — free flight, journeys, search, fact cards, epoch scrubber, onboarding, a11y, deep links |
-| 05 | [`05-large-scale.md`](phase-1/05-large-scale.md) | 02 | Statistical structure tier out to ~500 Mpc |
+| 05 | [`05-large-scale.md`](phase-1/05-large-scale.md) | 02 | **done** — statistical structure out to 500 Mpc, generated and badged `SIMULATED` |
 
 ## Decisions (locked by grill, 2026-10-04)
 
