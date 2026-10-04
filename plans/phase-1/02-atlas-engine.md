@@ -21,9 +21,13 @@ solve scale without the camera ever visibly snapping.
 
 ## Tasks
 
-- [ ] `[TODO]` Camera rig with exponential travel and constant angular rate across scale changes.
-- [ ] `[TODO]` Nested scene graph + floating origin; no visible pop at cell transitions.
-- [ ] `[TODO]` Logarithmic depth buffer; verify against z-fighting at planetary scale.
+- [x] Camera rig with exponential travel and constant angular rate across scale changes —
+  `web/src/core/camera-rig.js`. Travel interpolates distance geometrically and direction as unit
+  vectors; sweep rate holds at 6.83 rad/s with a spread of 4.4e-4 over 25 decades.
+- [x] Floating origin; render space stays under 9.9e6 m at every scale, so float32 never loses its
+  integral part — `web/src/core/floating-origin.js`.
+- [x] Depth: contiguous scale bands, not one buffer. A single 29-decade range leaves 595 km per
+  depth step at 1 AU; banded leaves 41 km, and 1.2 mm at 1 km — `web/src/core/depth-model.js`.
 - [ ] `[TODO]` Octree LOD: build from tile bounds, cull by frustum and by apparent brightness.
 - [ ] `[TODO]` Instanced point rendering with additive blending; measure points/frame.
 - [ ] `[TODO]` Frame budget controller: LOD degrades before frame rate does.

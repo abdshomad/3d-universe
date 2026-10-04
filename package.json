@@ -1,0 +1,14 @@
+{
+  "name": "3d-universe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A real-time, provenance-honest 3D atlas of the observable universe",
+  "scripts": {
+    "test": "node --test web/test/",
+    "bake": "python3 -m ingest.cli bake --source gaia --limit 5000"
+  },
+  "dependencies": {
+    "three": "^0.186.0"
+  }
+}

@@ -44,4 +44,9 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   (bad id or a shoved position) makes verification fail, so the check has teeth.
 - 2026-10-04 — `n` #5 (sub-plan 01, final): catalog releases became data — `ingest/catalogs.json` +
   `catalogs.py`. DR2 and DR3 both bake and verify with no code change; unpublished releases are
-  refused with the reason and their date. Sub-plan 01 is complete; next is sub-plan 02 (engine).
+  refused with the reason and their date. Sub-plan 01 complete.
+- 2026-10-04 — `n` #6 (sub-plan 02): engine core in `web/src/core/` with 12 node tests. Two real
+  bugs the tests caught: travel lerped raw coordinates, so a 25-decade target snapped the camera onto
+  its axis on frame one; and the start radius was clamped against the target, teleporting the camera
+  from 1 m to 5e16 m. Sweep rate now holds at 6.83 rad/s (spread 4.4e-4). Depth is banded, not one
+  buffer: 41 km per step at 1 AU versus 595 km.

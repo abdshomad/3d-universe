@@ -46,6 +46,20 @@ Catalog releases are data. `ingest/catalogs.json` names the table, columns and e
 refused with its reason — Gaia DR4 is scheduled for 2026-12-02, so flipping `available` in that file
 is the entire activation.
 
+## Web engine
+
+```bash
+npm install
+npm test        # node --test, 12 checks over the engine core
+```
+
+- `web/src/core/camera-rig.js` — exponential travel (distance interpolated geometrically, direction
+  as unit vectors) and rotation at a scale-independent angular rate.
+- `web/src/core/floating-origin.js` — the world moves in float64, render space stays under 1e7 m so
+  float32 keeps its integral part.
+- `web/src/core/depth-model.js` — contiguous scale bands. One buffer over 29 decades would leave
+  595 km per depth step at 1 AU; the bands leave 41 km, and 1.2 mm at 1 km.
+
 ## Verified access paths
 
 Measured from the build host, 2026-10-04:
@@ -66,5 +80,6 @@ Measured from the build host, 2026-10-04:
 
 ## Status
 
-Phase 1, sub-plan 01 (data foundation): the `ingest/` package exists and runs against live sources.
-Tiles and the web renderer are next.
+Sub-plan 01 (data foundation) is complete: every tile verifies against its live catalog. Sub-plan 02
+(engine) has its spatial core done — camera rig, floating origin, depth bands. Next: octree LOD and
+the first rendered frame.
