@@ -8,6 +8,7 @@
 
 import { FrameBudgetController } from './core/frame-budget.js';
 import { LodTree } from './core/lod-tree.js';
+import { createTierBudget } from './core/tier-budget.js';
 import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
 import { createStarLayer } from './render/star-layer.js';
@@ -188,6 +189,7 @@ async function start() {
     // The step is clamped so a long stall cannot teleport the camera; the
     // unclamped value is what the performance harness records.
     const measured = Math.max(0, (now - previous) / 1000);
+    frameBudget.sample(measured * 1000); // unclamped: this is the real cost
     const delta = Math.min(measured, 0.1);
     previous = now;
     // Free flight takes over the moment a key is held: the route pauses and the
@@ -445,13 +447,15 @@ function updateLssVisibility() {
   const fade = fadeForView(radius, { fadeEndMpc: LSS_FADE_END_MPC });
   const level = levelForView(lssField, Math.max(radius, 1));
 
+  const affordable = !frameBudget.deferred;
   for (const [index, layer] of lssLevels.entries()) {
     const stride = index + 1;
-    layer.visible = fade > 0 && stride === level;
+    layer.visible = fade > 0 && affordable && stride === level;
     layer.material.opacity = fade;
   }
   lssLevel = level;
-  atlas.stats.lssVisible = fade > 0;
+  atlas.stats.lssDeferred = !affordable;
+  atlas.stats.lssVisible = fade > 0 && affordable;
   atlas.stats.lssLevel = level;
   atlas.stats.lssFade = Number(fade.toFixed(3));
 }
@@ -528,6 +532,9 @@ function updateHud(now = performance.now()) {
 }
 
 let cardSelection = null;
+// An optional tier must never be the reason a frame is late.
+const frameBudget = createTierBudget({ budgetMs: 20 });
+atlas.frameBudget = frameBudget;
 let lssField = null;
 let lssLevels = [];
 let lssLevel = 2;
