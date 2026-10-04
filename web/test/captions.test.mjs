@@ -56,3 +56,22 @@ test('a caption hedges about nothing', () => {
     }
   }
 });
+
+test('a caption about a named place does not talk about another one', () => {
+  // The Alpha Centauri clause is context for the scale-out route. Printed under
+  // a caption about Barnard's Star it is true and beside the point.
+  const barner = captionFor({ id: "Barnard's Star", radiusPc: 1.8215, name: "Barnard's Star" });
+  assert.ok(barner.text.includes("Barnard's Star"), barner.text);
+  assert.ok(!barner.text.includes('Alpha Centauri'), barner.text);
+  assert.ok(barner.source.includes('guided journey'), barner.source);
+
+  // The outward-looking route keeps its clause.
+  const outward = captionFor({ id: 'nearby-stars', radiusPc: 5 });
+  assert.ok(outward.text.includes('Alpha Centauri'), outward.text);
+});
+
+test('a measured distance reads as a measured distance', () => {
+  const alpha = captionFor({ radiusPc: 1.3475, name: 'Alpha Centauri A' });
+  assert.ok(alpha.text.includes('measured parallax'), alpha.text);
+  assert.ok(alpha.text.includes('1.35'), 'the radius is not printed to four decimals: ' + alpha.text);
+});

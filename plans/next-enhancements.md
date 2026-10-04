@@ -106,6 +106,25 @@ mechanism — the same discipline, in the place more people will see it.
 drift, and a caption that contradicts another caption is worse than no caption.
 
 **Exit.** Every journey hold shows the caption the cinematic would show for that scale.
+**Status: done, 2026-10-05** — one `showCaption` writer, two callers: the cinematic and the guided
+routes. `captionFor` remains the only source of these sentences, so the two cannot drift apart.
+
+Verified live on the guided journey, each waypoint naming itself:
+
+> sol — *0.0001 parsec is 21 astronomical units: from out here the Sun and its planets are a speck.*
+> Alpha Centauri A — *is 1.35 parsecs, 4.4 light years away. Its distance is a measured parallax.*
+> Barnard's Star — *is 1.82 parsecs, 5.9 light years away. Its distance is a measured parallax.*
+
+**The copy was wrong in a way only flying it could show.** The sub-50 pc caption opened with *The
+nearest star system, Alpha Centauri, is 4.2 light years away* — true, and written for the scale-out
+route where you are looking outward at it. Printed under a caption about Barnard's Star, and again
+under Sirius, it was true and beside the point. A caption is a claim about **the thing it is
+captioning**, and this one had been silently generalising.
+
+The fix is context, not a second sentence: a step carrying a name says what *that* place is and how far
+it is. The outward-looking clause stays where it belongs. That is the invariant earning its keep — one
+implementation, used in a context it was not written for, was the drift.
+
 
 ---
 

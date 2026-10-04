@@ -303,6 +303,7 @@ async function start() {
     } else if (freeFlight) {
       atlas.rig.resetDrift();
       atlas.rig.positionMetres = flight.step(delta, atlas.rig.positionMetres);
+      hideCaption();
       if (motion.drift) atlas.rig.lookAtAngles(atlas.rig.baseYaw, atlas.rig.basePitch);
       atlas.stats.waypoint = 'free flight';
     } else {
@@ -314,6 +315,7 @@ async function start() {
       const look = anglesFromDirection(shot.lookDirection);
       atlas.rig.lookAtAngles(look.yaw, look.pitch);
       atlas.stats.waypoint = shot.name;
+      renderRouteCaption(shot.name);
     atlas.stats.route = activeRouteName;
     }
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();
@@ -456,14 +458,29 @@ function appendModelledStep(steps) {
 }
 
 
-/** The caption belongs to the hold; it leaves the moment the sky is taken back. */
-function renderCaption() {
-  const caption = captionFor(cinematic.active ? cinematic.current : null);
+/** Show a caption, or nothing. One writer, so two callers cannot disagree. */
+function showCaption(caption) {
   if (!caption) return hideCaption();
   if (captionShown === caption.text) return;
   captionShown = caption.text;
   captionEl.textContent = `${caption.text} — ${caption.source}`;
   captionEl.hidden = false;
+}
+
+/** The caption belongs to the hold; it leaves the moment the sky is taken back. */
+function renderCaption() {
+  showCaption(captionFor(cinematic.active ? cinematic.current : null));
+}
+
+/**
+ * The same captions on the guided routes, from the same copy: a journey is a
+ * fly-through with holds, and a hold with nothing said is the emptiest part of
+ * it. `captionFor` is the only source of these sentences.
+ */
+function renderRouteCaption(name) {
+  if (cinematic.active) return;
+  const waypoint = activeRoute?.waypoints?.find((candidate) => candidate.name === name);
+  showCaption(captionFor(waypoint ? { radiusPc: waypoint.radiusPc, name: waypoint.name } : null));
 }
 
 function hideCaption() {

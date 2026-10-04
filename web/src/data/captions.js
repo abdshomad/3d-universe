@@ -15,6 +15,11 @@ import { LIGHT_YEARS_PER_PC } from '../core/light-travel.js';
 
 const AU_PER_PC = 206264.806;
 
+/** Landmarks carry measured distances with decimals; route radii are round. */
+function formatRadius(radiusPc) {
+  return radiusPc < 10 ? Number(radiusPc.toFixed(2)).toString() : String(Math.round(radiusPc));
+}
+
 function years(radiusPc) {
   const value = radiusPc * LIGHT_YEARS_PER_PC;
   return value >= 1000 ? `${Math.round(value / 1000)},${String(Math.round(value) % 1000).padStart(3, '0')}`
@@ -42,8 +47,19 @@ export function captionFor(step) {
     };
   }
   if (radiusPc < 50) {
+    // A journey is arriving *at* a named place. The Alpha Centauri clause is
+    // context for the scale-out route, where you look outward at it; printed
+    // under a caption about Barnard's Star it is true and beside the point,
+    // which is worse than saying nothing.
+    if (step.name && step.name !== 'sol') {
+      return {
+        text: `${step.name} is ${formatRadius(radiusPc)} parsecs — ${years(radiusPc)} light years away. `
+          + 'Its distance is a measured parallax.',
+        source: 'Hipparcos parallax · guided journey',
+      };
+    }
     return {
-      text: `${radiusPc} parsecs is ${years(radiusPc)} light years. The nearest star system, `
+      text: `${formatRadius(radiusPc)} parsecs is ${years(radiusPc)} light years. The nearest star system, `
         + 'Alpha Centauri, is 4.2 light years away — measured, not placed.',
       source: 'Gaia DR3 parallaxes · scale-out route',
     };
