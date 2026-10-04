@@ -119,3 +119,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   a browser. The badge is the point: SIMULATED outranks UNRESOLVED outranks MEASURED, and it reads
   UNRESOLVED here because measured stars and unresolved dust share the frame. A missing B-V shows as
   an em dash, not a zero. 137/137 tests pass.
+- 2026-10-04 — `n` #21 (sub-plan 03, final): camera grammar. The rig now keeps the route's gaze and
+  the slow drift as separate terms — assigning `yaw` every frame had been silently cancelling the
+  drift, so the "constant slow drift" in the art direction never actually ran. Verified live: drift
+  grows 0.0053 to 0.0137 rad across a segment while the base angle follows the beats. Sub-plan 03 is
+  complete; 140/140 tests pass.

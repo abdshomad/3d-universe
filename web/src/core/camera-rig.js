@@ -1,17 +1,19 @@
 /**
  * Camera rig: exponential travel and scale-independent rotation.
  *
- * Travel interpolates the *distance from the scene origin* geometrically, so
- * the angular sweep rate — speed divided by distance — is constant by
- * construction. That is what makes a flight from 1 m to 500 Mpc feel like one
- * continuous move instead of a crawl followed by a fall.
+ * Orientation is two parts: where the route points (`baseYaw`, `basePitch`) and
+ * the slow drift layered on top (`driftYaw`, `driftPitch`). Keeping them apart
+ * is what lets a cinematic flight keep breathing — assigning `yaw` outright every
+ * frame silently cancels the drift.
  *
- * Rotation is a pure angular rate and never consults the distance, so it is
- * identical at 1 m and at 500 Mpc.
+ * Distance interpolates geometrically between waypoints, so travelling from
+ * 1 parsec to 10 kiloparsec feels like one move rather than a crawl followed by
+ * a fall. Bearings interpolate along the shortest arc.
  */
 
 const EPSILON = 1e-9;
 const MIN_START_RADIUS_FRACTION = 1e-9;
+const MAX_PITCH_DRIFT = 0.25;
 
 export class CameraRig {
   /**
@@ -22,12 +24,33 @@ export class CameraRig {
     this.maxSpeedMetresPerSecond = maxSpeedMetresPerSecond;
     this.velocityMetresPerSecond = [0, 0, 0];
 
-    this.yaw = 0;
-    this.pitch = 0;
+    this.baseYaw = 0;
+    this.basePitch = 0;
+    this.driftYaw = 0;
+    this.driftPitch = 0;
     this.yawRate = 0;
     this.pitchRate = 0;
 
     this._travel = null;
+  }
+
+  /** Where the camera looks: the route's gaze plus the accumulated drift. */
+  get yaw() {
+    return wrapAngle(this.baseYaw + this.driftYaw);
+  }
+
+  get pitch() {
+    return clamp(this.basePitch + this.driftPitch, -Math.PI / 2, Math.PI / 2);
+  }
+
+  set yaw(value) {
+    this.baseYaw = value;
+    this.driftYaw = 0;
+  }
+
+  set pitch(value) {
+    this.basePitch = value;
+    this.driftPitch = 0;
   }
 
   get isTravelling() {
@@ -36,6 +59,20 @@ export class CameraRig {
 
   get travelProgress() {
     return this._travel ? this._travel.u : 1;
+  }
+
+  /** Point the camera without disturbing the drift. */
+  lookAtAngles(yaw, pitch) {
+    this.baseYaw = yaw;
+    this.basePitch = pitch;
+    return this;
+  }
+
+  /** Bring the drift back to zero, e.g. when the user takes control. */
+  resetDrift() {
+    this.driftYaw = 0;
+    this.driftPitch = 0;
+    return this;
   }
 
   /**
@@ -75,7 +112,7 @@ export class CameraRig {
 
   /** The slow idle drift the art direction asks for, in radians per second. */
   autoDrift(radiansPerSecond = 0.004) {
-    return this.setAngularRate(radiansPerSecond, 0);
+    return this.setAngularRate(radiansPerSecond, radiansPerSecond * 0.12);
   }
 
   /** Advance by a wall-clock delta, so behaviour does not depend on frame rate. */
@@ -120,8 +157,12 @@ export class CameraRig {
   }
 
   _applyRotation(deltaSeconds) {
-    this.yaw = wrapAngle(this.yaw + this.yawRate * deltaSeconds);
-    this.pitch = clamp(this.pitch + this.pitchRate * deltaSeconds, -Math.PI / 2, Math.PI / 2);
+    this.driftYaw = wrapAngle(this.driftYaw + this.yawRate * deltaSeconds);
+    this.driftPitch = clamp(
+      this.driftPitch + this.pitchRate * deltaSeconds,
+      -MAX_PITCH_DRIFT,
+      MAX_PITCH_DRIFT,
+    );
   }
 }
 
@@ -133,14 +174,12 @@ export function travelRadius(startRadius, logGrowth, progress) {
 /**
  * Direction of travel: interpolate the unit vectors, never the raw
  * coordinates. Lerping coordinates across 25 decades lets the huge component
- * swallow the small one on the very first frame, and the camera snaps onto the
- * target's axis before it has moved at all.
+ * swallow the small one on the very first frame.
  */
 export function travelDirection(from, to, progress) {
   const a = normalise(from);
   const b = normalise(to);
-  const lerped = a.map((component, axis) => component + (b[axis] - component) * progress);
-  return normalise(lerped);
+  return normalise(a.map((component, axis) => component + (b[axis] - component) * progress));
 }
 
 export function radius(point) {
@@ -152,12 +191,12 @@ export function distanceFrom(a, b) {
 }
 
 /** Sideways bulge so long journeys are not dead straight. */
-function arcOffset(from, to, arc, u) {
+function arcOffset(from, to, arc, progress) {
   if (arc === 0) return [0, 0, 0];
   const span = distanceFrom(from, to);
   if (span < EPSILON) return [0, 0, 0];
   const lateral = perpendicularOffset(from, to);
-  const weight = Math.sin(Math.PI * u) * arc * span;
+  const weight = Math.sin(Math.PI * progress) * arc * span;
   return lateral.map((component) => component * weight);
 }
 
@@ -165,7 +204,7 @@ function perpendicularOffset(from, to) {
   const span = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
   const length = Math.hypot(...span);
   if (length < EPSILON) return [0, 0, 0];
-  const along = [span[0] / length, span[1] / length, span[2] / length];
+  const along = span.map((value) => value / length);
   const reference = Math.abs(along[1]) > 0.95 ? [1, 0, 0] : [0, 1, 0];
   const side = normalise(cross(along, reference));
   return normalise(cross(side, along));
@@ -179,17 +218,16 @@ function cross(a, b) {
   ];
 }
 
-function normalise(v) {
-  const length = Math.hypot(...v);
+function normalise(vector) {
+  const length = Math.hypot(...vector);
   if (length < EPSILON) return [0, 0, 0];
-  return [v[0] / length, v[1] / length, v[2] / length];
+  return [vector[0] / length, vector[1] / length, vector[2] / length];
 }
 
 function clamp(value, low, high) {
   return Math.min(Math.max(value, low), high);
 }
 
-function wrapAngle(angle) {
-  const twoPi = Math.PI * 2;
-  return ((angle % twoPi) + twoPi) % twoPi;
+function wrapAngle(degrees) {
+  return ((degrees % 360) + 360) % 360;
 }

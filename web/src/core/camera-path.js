@@ -4,13 +4,10 @@
  * A route is a list of waypoints — a radius, a bearing, a hold, and what the
  * camera should look at — evaluated deterministically: the same moment always
  * yields the same position and the same gaze, on any machine, at any frame rate.
- *
- * Radius interpolates geometrically between waypoints, the same rule the rig
- * uses, so travelling from 1 parsec to 10 kiloparsec feels like one move rather
- * than a crawl followed by a fall. Bearings interpolate along the shortest arc.
  */
 
 import { bearingDirection, celestialDirection } from './celestial.js';
+import { travelRadius } from './camera-rig.js';
 import { pcToMetres } from './units.js';
 
 const DEFAULT_SEGMENT_SECONDS = 6;
@@ -54,9 +51,7 @@ export class CameraPath {
   sample(elapsedSeconds) {
     if (!(elapsedSeconds >= 0)) throw new RangeError('elapsedSeconds must not be negative');
     const span = this._segmentAt(elapsedSeconds);
-    const u = span.holding
-      ? 1
-      : easeExponential((elapsedSeconds - span.start) / span.seconds);
+    const u = span.holding ? 1 : easeExponential((elapsedSeconds - span.start) / span.seconds);
 
     const from = this.waypoints[span.from];
     const to = this.waypoints[span.to];
@@ -94,7 +89,9 @@ export class CameraPath {
       cursor += seconds;
       const hold = this.waypoints[i + 1].holdSeconds;
       if (hold > 0) {
-        this._timeline.push({ index: i, from: i + 1, to: i + 1, start: cursor, seconds: hold, holding: true });
+        this._timeline.push({
+          index: i, from: i + 1, to: i + 1, start: cursor, seconds: hold, holding: true,
+        });
         cursor += hold;
       }
     }
@@ -110,14 +107,13 @@ export class CameraPath {
 
 /** Bearing in degrees and a radius in parsecs to metres on the equatorial plane. */
 export function polarToCartesian(radiusPc, bearingDeg) {
-  const radius = pcToMetres(radiusPc);
-  const angle = (bearingDeg * Math.PI) / 180;
-  return [radius * Math.cos(angle), 0, radius * Math.sin(angle)];
+  const distance = pcToMetres(radiusPc);
+  return bearingDirection(bearingDeg).map((component) => component * distance);
 }
 
 /** Exponential ease: near-constant apparent rate whatever the decades in between. */
-export function easeExponential(u) {
-  const t = Math.min(Math.max(u, 0), 1);
+export function easeExponential(progress) {
+  const t = Math.min(Math.max(progress, 0), 1);
   const curve = Math.log(12);
   return (Math.exp(curve * t) - 1) / (Math.exp(curve) - 1);
 }
@@ -137,11 +133,10 @@ function normalise(waypoint, index) {
   };
 }
 
-function lerpBearing(fromDeg, toDeg, u) {
+function lerpBearing(fromDeg, toDeg, progress) {
   const delta = ((toDeg - fromDeg + 540) % 360) - 180; // shortest arc
-  return wrapBearing(fromDeg + delta * u);
+  return (((fromDeg + delta * progress) % 360) + 360) % 360;
 }
 
-function wrapBearing(degrees) {
-  return ((degrees % 360) + 360) % 360;
-}
+// Re-exported so callers that only need the easing share one implementation.
+export { travelRadius };

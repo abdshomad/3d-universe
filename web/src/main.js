@@ -104,8 +104,7 @@ async function start() {
     atlas.rig.positionMetres = shot.positionMetres;
     // The route says where to face: a deep field, or outward along the route.
     const look = anglesFromDirection(shot.lookDirection);
-    atlas.rig.yaw = look.yaw;
-    atlas.rig.pitch = look.pitch;
+    atlas.rig.lookAtAngles(look.yaw, look.pitch);
     atlas.stats.waypoint = shot.name;
     atlas.stats.routeSeconds = routeTime;
     if (atlas.origin.recentredAt !== lastOriginEpoch) redraw();

@@ -93,7 +93,8 @@ test('rotation is a constant angular rate at any scale', () => {
     far.update(1 / 60);
   }
   assert.ok(Math.abs(near.yaw - far.yaw) < 1e-12);
-  assert.ok(Math.abs(near.yaw - 0.01 * 2) < 1e-12);
+  // 120 float additions accumulate error; the rate, not the sum, is exact.
+  assert.ok(Math.abs(near.yaw - 0.01 * 2) < 1e-9, `yaw ${near.yaw}`);
 });
 
 test('floating origin keeps render space float32-safe over the whole flight', () => {
@@ -166,4 +167,29 @@ test('depth mapping inverts', () => {
     const roundTrip = depth.metresFromNdc(depth.ndc(metres));
     assert.ok(Math.abs(roundTrip - metres) / metres < 1e-9, `round trip failed at ${metres}`);
   }
+});
+test('drift composes with the route gaze instead of cancelling it', () => {
+  const rig = new CameraRig({ positionMetres: [1, 0, 0] }).autoDrift(0.01);
+  for (let i = 0; i < 60; i += 1) rig.update(1 / 60);
+  rig.lookAtAngles(90, 0);
+  assert.ok(Math.abs(rig.yaw - (90 + 0.01)) < 1e-9, `yaw ${rig.yaw}`);
+  assert.equal(rig.driftYaw > 0, true, 'the drift survived the gaze change');
+});
+
+test('assigning yaw directly resets the drift, taking control does too', () => {
+  const rig = new CameraRig().autoDrift(0.01);
+  for (let i = 0; i < 60; i += 1) rig.update(1 / 60);
+  rig.yaw = 45;
+  assert.equal(rig.driftYaw, 0);
+  assert.equal(rig.yaw, 45);
+  for (let i = 0; i < 60; i += 1) rig.update(1 / 60);
+  assert.ok(Math.abs(rig.yaw - (45 + 0.01)) < 1e-9);
+  rig.resetDrift();
+  assert.equal(rig.yaw, 45);
+});
+
+test('pitch drift is bounded so the sky never turns over', () => {
+  const rig = new CameraRig().autoDrift(1.0);
+  for (let i = 0; i < 600; i += 1) rig.update(1 / 60);
+  assert.ok(Math.abs(rig.pitch) <= 0.25 + 1e-9, `pitch ${rig.pitch}`);
 });

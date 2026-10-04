@@ -47,7 +47,10 @@ Depends on 02 (all of this is layers over the engine). Depends on 01 for positio
   readout numbers, and a badge whose precedence is SIMULATED > UNRESOLVED > MEASURED. Verified live:
   badge `UNRESOLVED`, 14,118 objects, fact card on Gaia 3840328107022576896 reading
   `esa.gaia DR3 · U3DTILE2 · measured`, unknown B−V shown as `—` rather than 0.
-- [ ] `[TODO]` **Camera grammar**: constant slow drift, exponential scale changes, no cuts.
+- [x] **Camera grammar**: the rig now composes the route's gaze with a separate drift term, so a
+  cinematic flight keeps breathing. Assigning `yaw` outright every frame had been silently cancelling
+  the drift — verified in a browser: drift grows 0.0053 → 0.0137 rad across a route segment while the
+  base angle follows the beats, pitch drift is bounded, and no transition is a cut.
 
 ## Honesty rules (hard requirements, not style)
 
