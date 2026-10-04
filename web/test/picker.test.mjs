@@ -11,6 +11,7 @@ import {
   isClick,
   nearestCellOnScreen,
   pickFromHits,
+  relationIdentity,
 } from '../src/core/picker.js';
 
 /** A tile whose geometry a test can predict: origin 0, 100 pc extent, unit pc. */
@@ -187,4 +188,45 @@ test('a cited event selects, with its id as a string', () => {
   assert.equal(selected.id, '12345');
   assert.equal(selected.period_s, 0.0331);
   assert.equal(selected.citation, 'ATNF pulsar catalogue');
+});
+
+/**
+ * A line that cannot say which two stars it joins is a mark on the sky.
+ */
+test('a ribbon names its relation, its source and both of its ends', () => {
+  const relation = relationIdentity({
+    mesh: {
+      userData: {
+        relationId: 'constellation:Ori',
+        relationName: 'Orion',
+        relationType: 'constellation',
+        citation: { dataset: 'Hipparcos via VizieR' },
+        endSeparationArcsec: 12.5,
+        endpoints: [{ id: 'HIP 32349', separationArcsec: 12.5 }, { id: 'HIP 25336', separationArcsec: 0.8 }],
+      },
+    },
+  });
+  assert.equal(relation.kind, 'relation');
+  assert.equal(relation.name, 'Orion');
+  assert.equal(relation.endSeparationArcsec, 12.5);
+  assert.equal(relation.endsNamed, true);
+  assert.deepEqual(relation.endpoints.map((e) => e.id), ['HIP 32349', 'HIP 25336']);
+});
+
+test('a ribbon with an unnamed end says so rather than claiming both', () => {
+  const relation = relationIdentity({
+    mesh: {
+      userData: {
+        relationName: 'Orion',
+        relationType: 'constellation',
+        endpoints: [{ id: 'HIP 32349', separationArcsec: 1 }, { id: null, separationArcsec: 400 }],
+      },
+    },
+  });
+  assert.equal(relation.endsNamed, false);
+});
+
+test('something that is not a relation does not select', () => {
+  assert.equal(relationIdentity({ mesh: null }), null);
+  assert.equal(relationIdentity({ mesh: { userData: {} } }), null);
 });

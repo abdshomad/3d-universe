@@ -33,6 +33,16 @@ which two stars it joins is a mark on the sky, and it should not be selectable a
 statement.
 
 **Exit.** A click on a drawn line names the relation, its source, and its two endpoints.
+**Status: done, 2026-10-05** — ribbons are picked in screen space, like the modelled cells: a line a
+few pixels wide cannot be raycast honestly, so the curve is projected and the nearest point within
+14 px is the pick. The star index now carries the id of every star it holds, and a ribbon records the
+two ends it joins — a line that cannot say which two stars it connects is a mark on the sky, and it
+should not be selectable as though it were a statement.
+
+Verified live: clicking a line in Ursa Major selects `constellation:UMa` and the card reads **joins HIP
+54539 and HIP 50372**, *match quality 1.6″ — the worst of its two ends*, cited to Hipparcos via VizieR.
+A ribbon with an unnamed end reports that one end is not a catalogued star rather than claiming both.
+
 
 ---
 

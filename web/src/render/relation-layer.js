@@ -26,8 +26,11 @@ const MAX_END_SEPARATION_ARCSEC = 600;
 
 /** Index of measured stars by direction, for nearest-in-angle lookups. */
 export class StarIndex {
-  /** @param {Float64Array} worldPositions star positions in world metres */
-  constructor(worldPositions) {
+  /**
+   * @param {Float64Array} worldPositions star positions in world metres
+   * @param {Array<string|number>} [ids] what each star is, so a match can name it
+   */
+  constructor(worldPositions, ids = null) {
     this.directions = new Float64Array(worldPositions.length);
     this.positions = [];
     for (let i = 0; i < worldPositions.length; i += 3) {
@@ -40,6 +43,7 @@ export class StarIndex {
       this.directions[i + 2] = z / length;
       this.positions.push(new Vector3(x, y, z));
     }
+    this.ids = ids;
     this.cache = new Map();
   }
 
@@ -74,7 +78,12 @@ export class StarIndex {
     );
     const separationArcsec = 2 * Math.asin(Math.min(1, chord / 2)) * (180 / Math.PI) * 3600;
     const found = bestIndex >= 0 && best >= cosTolerance
-      ? { position: this.positions[bestIndex], separationArcsec }
+      ? {
+        position: this.positions[bestIndex],
+        separationArcsec,
+        index: bestIndex,
+        id: this.ids?.[bestIndex] ?? null,
+      }
       : null;
     this.cache.set(key, found);
     return found;
@@ -141,6 +150,13 @@ export function buildRelationRibbons({
       mesh.userData.citation = citation;
       mesh.userData.relationType = relation.type;
       mesh.userData.endSeparationArcsec = Number(separation.toFixed(1));
+      // A line that cannot say which two stars it joins is a mark on the sky.
+      mesh.userData.relationId = relation.id ?? relation.name ?? null;
+      mesh.userData.relationName = relation.name ?? relation.id ?? null;
+      mesh.userData.endpoints = [
+        { id: start.id ?? null, separationArcsec: Number(start.separationArcsec.toFixed(1)) },
+        { id: finish.id ?? null, separationArcsec: Number(finish.separationArcsec.toFixed(1)) },
+      ];
       meshes.push(mesh);
     }
   }

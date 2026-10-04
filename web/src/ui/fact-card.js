@@ -180,8 +180,24 @@ export function cardForUnresolvedLink(selection) {
   ], 'deep link · the view was restored, the selection was not');
 }
 
+/** A relation: what joins, what it is, and where it came from. */
+export function cardForRelation(relation) {
+  if (!relation) return null;
+  const ends = relation.endpoints.map((end) => end.id ?? 'unnamed').join(' and ');
+  const pairs = [
+    ['type', relation.relationType ?? 'relation'],
+    ['joins', relation.endsNamed ? ends : `${ends} — at least one end is not a catalogued star`],
+  ];
+  if (relation.endSeparationArcsec !== null) {
+    pairs.push(['match quality', `${relation.endSeparationArcsec}″ — the worst of its two ends`]);
+  }
+  return card(relation.name ?? 'Relation', pairs,
+    relation.citation?.dataset ?? relation.citation ?? 'cited relation');
+}
+
 const BUILDERS = {
   star: cardForStar,
+  relation: cardForRelation,
   'unresolved-link': cardForUnresolvedLink,
   field: cardForField,
   landmark: cardForLandmark,

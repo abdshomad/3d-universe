@@ -19,6 +19,7 @@ import {
   cellIdentity,
   eventIdentity,
   identityAt,
+  relationIdentity,
   isClick,
   nearestCellOnScreen,
   pickFromHits,
@@ -233,7 +234,10 @@ async function start() {
   if (figurePayload) {
     // Figure endpoints resolve against measured Hipparcos rows, not against
     // whatever star in the neighbourhood tile happens to be nearby.
-    figureStarIndex = new StarIndex(figureStarPositions(figurePayload));
+    figureStarIndex = new StarIndex(
+      figureStarPositions(figurePayload),
+      figurePayload.stars.map((star) => `HIP ${star.hip}`),
+    );
     figureStarPayload = figurePayload;
   }
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);
@@ -586,6 +590,9 @@ function pickAt(clientX, clientY) {
   const event = pickEventAt(ndc);
   if (event) return event;
 
+  const relation = pickRelationAt(ndc);
+  if (relation) return relation;
+
   const hits = raycaster.intersectObjects(atlas.layers, false).map((hit) => ({
     tileId: hit.object.userData?.tileId ?? null,
     index: hit.index,
@@ -628,6 +635,32 @@ function pickEventAt(ndc) {
     const eventIndex = layer.userData.vertexEvent?.[hit.index];
     const event = layer.userData.events?.[eventIndex];
     return eventIdentity({ event, citation: layer.userData.citation });
+  }
+  return null;
+}
+
+/**
+ * Ribbons are thin meshes — a line a few pixels wide — so they are picked in
+ * screen space like the modelled cells, by projecting the curve and taking the
+ * nearest within a few pixels of the click.
+ */
+function pickRelationAt(ndc) {
+  if (!ribbons || ribbons.length === 0) return null;
+  const rect = canvas.getBoundingClientRect();
+  const vertex = new Vector3();
+  for (const mesh of ribbons) {
+    if (!mesh.visible) continue;
+    const positions = mesh.geometry.attributes.position.array;
+    const count = positions.length / 3;
+    const projected = new Float64Array(count * 3);
+    for (let i = 0; i < count; i += 1) {
+      vertex.set(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2]).project(atlas.camera);
+      projected[3 * i] = vertex.x;
+      projected[3 * i + 1] = vertex.y;
+      projected[3 * i + 2] = vertex.z;
+    }
+    const hit = nearestCellOnScreen(projected, ndc, { width: rect.width, height: rect.height, maxPixels: 14 });
+    if (hit) return relationIdentity({ mesh });
   }
   return null;
 }

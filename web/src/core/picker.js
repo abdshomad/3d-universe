@@ -147,3 +147,29 @@ export function eventIdentity({ event, citation }) {
   if (!source) return null;
   return { ...event, id: String(event.id), citation: source };
 }
+
+/**
+ * What a clicked ribbon is: the relation, its source, and the two stars it joins.
+ *
+ * Refuses a ribbon whose ends it cannot name. A line drawn between two catalogue
+ * rows is a statement; a line drawn between "some star near here" is a mark on
+ * the sky, and it should not be selectable as though it were the first.
+ */
+export function relationIdentity({ mesh }) {
+  const data = mesh?.userData;
+  if (!data?.relationId && !data?.relationName) return null;
+  const endpoints = data.endpoints ?? [];
+  const named = endpoints.filter((end) => end?.id !== null && end?.id !== undefined);
+  return {
+    kind: 'relation',
+    id: data.relationId ?? data.relationName,
+    name: data.relationName ?? data.relationId,
+    relationType: data.relationType ?? null,
+    citation: data.citation ?? null,
+    endSeparationArcsec: data.endSeparationArcsec ?? null,
+    endpoints: named,
+    // Named is the honest state: a figure drawn from a catalogue is measured,
+    // and the card should not have to guess which it was.
+    endsNamed: named.length === endpoints.length && endpoints.length > 0,
+  };
+}

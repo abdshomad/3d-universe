@@ -188,3 +188,33 @@ test('a link that names nothing says so, rather than showing an empty card', () 
   assert.ok(label('what did arrive').includes('intact'), 'the view did arrive');
   assert.ok(card.provenance.includes('not'), card.provenance);
 });
+
+test('a relation card names what joins and how well it matched', () => {
+  const card = cardFor({
+    kind: 'relation',
+    name: 'Orion',
+    relationType: 'constellation',
+    citation: { dataset: 'Hipparcos via VizieR' },
+    endSeparationArcsec: 12.5,
+    endsNamed: true,
+    endpoints: [{ id: 'HIP 32349' }, { id: 'HIP 25336' }],
+  });
+  const label = (needle) => card.rows.find(([key]) => key === needle)?.[1];
+  assert.equal(card.name, 'Orion');
+  assert.equal(label('type'), 'constellation');
+  assert.equal(label('joins'), 'HIP 32349 and HIP 25336');
+  assert.ok(label('match quality').includes('12.5'), label('match quality'));
+  assert.equal(card.provenance, 'Hipparcos via VizieR');
+});
+
+test('a relation with an unnamed end does not claim both are catalogued', () => {
+  const card = cardFor({
+    kind: 'relation',
+    name: 'Orion',
+    relationType: 'constellation',
+    endsNamed: false,
+    endpoints: [{ id: 'HIP 32349' }, { id: null }],
+  });
+  const joins = card.rows.find(([key]) => key === 'joins')?.[1];
+  assert.ok(joins.includes('not a catalogued star'), joins);
+});
