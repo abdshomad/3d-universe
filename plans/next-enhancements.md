@@ -1,130 +1,99 @@
 # Next enhancements
 
-Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after E1–E3 closed,
-2026-10-05. Ordered by what most endangers the project's central claim, not by what is easiest.
+Decomposed from [`docs/prd/universe-3d.md`](../docs/prd/universe-3d.md) after E4–E6 closed,
+2026-10-05. Ordered by what most endangers the project's central claim, then by what completes an
+interaction.
 
-**Completed:** [E1 object picking](next-enhancements.md) · [E2 manifest
-integrity](next-enhancements.md) · [E3 download the slice](next-enhancements.md) — all shipped
-2026-10-04, 247 node tests green. Those three remain recorded in the history below.
-
----
-
-## E4 — Constellation vertices must resolve to a measured star
-
-**Status: done as far as the data allows, 2026-10-05** — and the first thing to record is that my
-original framing was wrong. The renderer never placed vertices at assumed positions: it calls
-`index.nearest(ra, dec)` and draws between the *measured* stars it finds. Every ribbon already joins
-two real catalogue rows.
-
-The real defect is subtler and worse. `nearest` accepted any match within **0.35° — 21 arcminutes**.
-Of 300 segment endpoints, only 113 (38%) match within 10″; the median is 289″ and the 90th
-percentile is 2,318″. So most ribbons were joining a star the figure does not name, while the
-citation on the layer implies the relation is real. A wrong relation asserted confidently is a worse
-failure than a missing one, and this one was in every session.
-
-**What changed.** `nearest` now reports the separation it accepted. A ribbon whose worst end is worse
-than **600″** is dropped and counted, because a figure point is the position of a specific star and
-10′ is already a poor claim. Each drawn mesh records its own `endSeparationArcsec`, and the report
-names the worst match it kept. Verified live: 89 cited figures, 150 segments attempted, **50 drawn**,
-**27 dropped as too loose**, worst match kept 536″, no console errors.
-
-**What that costs.** The layer now covers a third of its segments instead of most of them. That is
-the honest price: the other two thirds were asserting pairings up to 21′ off. The report says so
-rather than hiding it.
-
-**Recovery is blocked on catalogue access, not on design.** Three Gaia probes failed — a 0.05° patch
-and a 12°×26° box both returned nothing in 90–120 s. SIMBAD answers in about a second but its ADQL
-rejected every geometry and magnitude form tried (`CONTAINS`/`POINT`/`CIRCLE`, `flux(V)` in `WHERE`).
-VizieR's Bright Star Catalogue answered minimal queries in 1–3 s and is the next thing to try: one
-query for 9,110 naked-eye stars, matched locally, one-to-one, dropping any segment with an unmatched
-vertex. The mechanism is about forty lines and its policy is written out above; it is not in the tree
-because nothing calls it yet, and shipping uncalled code is how it rots.
-
-**Two things worth keeping from the work.** `relation-layer.js` had **no tests at all** — the
-matching logic that makes every claim in the knowledge graph had never been executed by the suite.
-There are six now, covering match quality, the drop, the count and the worst-case report.
-
-And the crash they found was mine, not inherited. `HEAD` carried
-`index[segment.length - 1] ? endOf(segment) : null` — harmless, because indexing a `StarIndex` by a
-number is always `undefined`, so the call never ran. Rewriting that condition to
-`segment[segment.length - 1]` made it live and threw `ReferenceError` on every ribbon build. The new
-tests caught it in the same minute. The whole dead statement is gone.
+**Completed:** [E1 picking](next-enhancements.md) · [E2 manifest integrity](next-enhancements.md) ·
+[E3 download the slice](next-enhancements.md) · [E4 relation honesty](next-enhancements.md) ·
+[E5 exoplanet relations](next-enhancements.md) · [E6 cinematic auto-fly](next-enhancements.md) —
+all shipped 2026-10-04/05, 275 node tests green.
 
 ---
 
-## E5 — Exoplanet relations: host to planet, cited
+## E7 — Figure stars from Hipparcos, so the figures are drawn between named stars
 
-**Status: done, 2026-10-05, with one part deliberately not built** — `ingest/sources/exoplanets.py`
-pulls `pscomppars`, which is one row per planet; `ps` is one row per *publication* and inflates the
-count to 7,905 rows for 1,630 hosts. Inside 200 pc that is **2,345 planets across 1,652 systems**,
-nearest Proxima Cen b at 1.30 pc, discovered 2016 by radial velocity.
+**Why now.** E4 stopped the constellation layer from drawing ribbons between stars the figures do
+not name, and in doing so cut it to **50 of 150 segments**. The honest cost was accepted — but it was
+accepted on the assumption the stars could not be fetched. That assumption has now been tested and is
+false.
 
-**The edge is not drawn, on purpose.** The scope above asked for a host→planet ribbon. At 50 pc a
-5 AU orbit subtends about a third of an arcsecond — a fraction of a pixel. Drawn at true scale the
-line has no length, and drawn at exaggerated scale it is a diagram pretending to be a measurement.
-So the planet is a **fact about a measured star** instead: the host is a real tile row, and the card
-that names the star names its planets, with the archive as the source. That is the relation this
-scale can actually support.
+Measured today: the NASA/ESA **VizieR** mirror of Hipparcos answers in **1.7 seconds** and returns
+**8,789 naked-eye stars** (V < 6.5) with positions *and* parallaxes. Against the 893 figure vertices:
 
-**A third flag.** An exoplanet has no astrometry, so its 3D position is the archive's `sy_dist`
-applied to a measured direction. That is a real number and not an astrometric solution, so rows and
-cards carry `DERIVED` alongside `MEASURED` and `SIMULATED`, and the export gate now refuses anything
-outside the three.
+| tolerance | vertices matched |
+|---|---|
+| 1″ | 590 (66%) |
+| 5″ | 847 (95%) |
+| **10″** | **874 (98%)** |
+| 30″ | 889 (100%) |
 
-Verified live: **968 of 1,652 systems** matched a measured star within 10′, carrying **1,440
-planets**; the 684 that matched nothing are counted, not dropped quietly. Export read back: 61,440
-rows — 60,000 `MEASURED`, 1,440 `DERIVED`, with `host`, `disc_year`, `st_teff` and
-`discovery_method` filled for every planet and left empty for every star.
+Median separation **0.58″**. The figure points *are* catalogue stars — E4's looseness was never a
+property of the figures, only of the nearest-star lookup we had. 6,421 of those stars sit inside the
+200 pc the atlas already renders, so the recovered layer is inside the scale the camera reaches.
 
-**Two defects reading the file caught.** The exported provenance had an empty citation, because the
-report carried one per matched system and none at the top where the export asked for it. And the
-CSV header had no `host` or `disc_year` column at all, so the archive's data was being collected,
-formatted and then silently discarded — the export looked complete and was not.
+**Scope.** Ingest the naked-eye Hipparcos set as its own provenance-carrying tile. Match each figure
+vertex to its star one-to-one, carry the measured parallax, and let the relation layer resolve
+endpoints against *those* rows rather than against the nearest star in the neighbourhood tile. The
+10′ tolerance E4 introduced stays as the ceiling; with real vertices it should almost never bind.
+
+**Invariant that matters.** A figure endpoint resolves to the star the figure names, or the segment
+is not drawn. No fallback to "whatever star is nearby" — that is the behaviour E4 removed, and
+restoring it quietly would undo the whole point.
+
+**Exit.** Every drawn endpoint names a Hipparcos star, and the segment count rises well past 50 with
+the match quality reported per segment.
 
 ---
 
-## E6 — Cinematic auto-fly
+## E8 — The modelled tier becomes pickable
 
-**Status: done, 2026-10-05** — `web/src/core/cinematic.js` is a timing state machine, not a camera
-system: it walks the poses the scale-out route already produces — sol, nearby-stars,
-neighbourhood, open-cluster-scale, kpc — and adds the one thing the route lacks, a **5-second hold at
-each scale** so the eye can catch up with what it has just flown into.
+**Why now.** E1 made stars pickable and the field card reachable by falling back when nothing else
+is selected, but a click on the modelled structure itself still does nothing. Every layer that draws
+something should be interrogable, or the viewer is left guessing what they are looking at when they
+click it.
 
-It is started by `c`, described from the single `KEY_BINDINGS` source, and it is off by default. The
-chrome drops to 0.18 opacity and the cursor disappears; the honesty **badge stays at 0.6**, because a
-viewer who cannot read whether the sky is measured has been taken from rather than shown to.
+**Scope.** Raycast the LSS layers, resolve a hit to the cell it is, and report that cell in the field
+card: its grid indices, quantised density, and the distance band the current fade represents. The
+existing `dropStaleSelection` and the tier's fade already govern when the layer is interactable at
+all; this extends the same discipline to picking.
 
-**Interruptible, absolutely.** Any key, any pointer gesture, or Escape returns the sky on the same
-frame. There is no grace period and no confirmation, because a viewer who touches the controls has
-already answered the question.
+**Invariant that matters.** A picked cell reports its own density. It must not be described as a
+galaxy, a void, or an overdensity in units that imply a measurement — it is a quantised value in a
+seeded random field, and the card says so.
 
-Verified live: idle → `c` starts it (waypoint reads `cinematic · sol`, readout at 0.18) → `w` returns
-the sky → a click returns it → Escape returns it. Under emulated `prefers-reduced-motion: reduce`,
-`c` does nothing at all, twice.
+**Exit.** A click on visible structure names the cell and its density; a click on nothing clears it.
 
-**Two bugs, and the second is the one to remember.** `Cinematic.dismiss()` returned nothing, so
-`stopCinematic` bailed on its own guard and the HUD stayed dimmed with nothing running — the first
-browser run showed `cinematic: true` and `opacity: 0.18` long after the mode had ended.
+---
 
-The second: `motionPolicy()` never exposed a `reduced` field, so `motion.reduced` was `undefined`,
-the guard in `startCinematic` was always falsy, and **the mode started for the exact viewers it was
-written to protect**. Every test passed, because the policy's own tests never asked whether it said
-what it was. A guard reading an always-undefined property is a guard that never fires, and it looks
-exactly like a feature working. The policy now carries `reduced`, the preference is re-checked live
-rather than only at load, and a test asserts the field is a boolean.
+## E9 — Captions for the cinematic holds
 
-275 node tests pass, 11 of them new.
+**Why now.** E6 holds for five seconds at each scale "so the eye can catch up", and then says
+nothing. The hold is the whole point of the mode, and it is currently the emptiest five seconds in
+the product — the viewer is held at a scale with no word about what they are looking at.
+
+**Scope.** One line per step, timed with the hold: the scale in units a person can hold, and what is
+measured there. At the neighbourhood: *a parsec is 3.26 light years — the distance light travels in
+a year*. At 500 Mpc: *this is a model, not a survey*. Sourced from the same research the rest of the
+copy comes from, not invented for the mode.
+
+**Invariant that matters.** A caption is a claim like any other. Each one carries its own source, and
+the modelled tier's caption says *simulated* in the text rather than relying on a badge the viewer may
+not be looking at.
+
+**Exit.** Every cinematic step shows its caption during its hold, and the caption disappears the
+moment the sky is taken back.
 
 ---
 
 ## Not now, and why
 
-- **Binary pairs from Gaia DR3.** Queried from this host twice. A sky patch a third of a degree
-  across, filtered on `nss_best_neighbour_angular_dist`, returned nothing in 90 seconds. Gaia TAP is
-  reachable but not usable for a harvest of this shape, and a wide-binary catalogue that must be
-  guessed at is worse than no edges.
-- **A bulk DESI mirror.** Unchanged from sub-plan 05: the tier stays generated until
-  `data.desi.lbl.gov` answers, at which point the badge flips back on the same tile format.
-- **Constellation *borders***, as opposed to figures. A second d3-celestial layer with the same
-  uncited-vertex problem E4 is fixing. Fix the vertices once, then decide whether borders earn
-  their place.
+- **Binary pairs from Gaia DR3.** Still blocked: Gaia TAP returned nothing in 90–120 s for probes as
+  small as a 0.05° patch. VizieR works and is fast, but a wide-binary catalogue needs the Gaia
+  neighbour table specifically, and inventing pairs from co-motion at our parallax precision would
+  be a guess dressed as a relation.
+- **Constellation borders.** The same d3-celestial layer as the figures, and the same uncited-vertex
+  problem E7 is about to solve for the figures. Solve the vertices once, then decide whether borders
+  earn their place.
+- **A bulk DESI mirror.** Unchanged: the tier stays generated until `data.desi.lbl.gov` answers, at
+  which point the badge flips back on the same tile format and nothing else changes.
