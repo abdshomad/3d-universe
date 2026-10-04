@@ -119,6 +119,22 @@ view.
 
 **Exit.** A link with a cell selection restores the cell; a link with a made-up id reports that the
 selection is unknown instead of rendering an empty card.
+**Status: done, 2026-10-05** — `web/src/core/selection-resolver.js`. A link's `s=` id is resolved by
+kind: a landmark through the search index, a modelled cell through the density field, a pulsar or
+burst through the event catalogue, a catalogue star through the tile's ids. A restored cell is the same
+object a click produces, so the two are indistinguishable downstream.
+
+Verified live with three links: `s=lss:446880` restores the cell and shows its card; `s=lss:999999`
+and `s=nonsense-id` both report **selection not restored**, naming the id that was asked for and
+saying the position, orientation and epoch in the link did arrive intact.
+
+**The bug that shipped for nine minutes.** My patch anchored on a single-line import that had already
+been rewritten to multi-line, so the import was never added, and `node --check` passed — it validates
+syntax, not whether an identifier is bound. The browser caught it as `resolveSelection is not defined`.
+Anchoring a patch on text that has since changed shape fails silently, and a syntax check cannot see
+it. The check that would have caught it: grep every imported name against the import list, which is now
+part of the loop.
+
 
 ---
 

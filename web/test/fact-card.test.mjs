@@ -178,3 +178,13 @@ test('an event card quotes the distance the layer actually placed it at', () => 
   const pcLabel = measured.rows.find(([key]) => key === 'distance')?.[1];
   assert.ok(pcLabel.includes('280'), pcLabel);
 });
+
+test('a link that names nothing says so, rather than showing an empty card', () => {
+  const card = cardFor({ kind: 'unresolved-link', requested: 'lss:9999' });
+  const label = (needle) => card.rows.find(([key]) => key === needle)?.[1];
+  assert.equal(card.name, 'Selection not restored');
+  assert.equal(label('asked for'), 'lss:9999');
+  assert.ok(label('why').includes('nothing in this atlas'));
+  assert.ok(label('what did arrive').includes('intact'), 'the view did arrive');
+  assert.ok(card.provenance.includes('not'), card.provenance);
+});

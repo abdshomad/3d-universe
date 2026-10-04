@@ -166,8 +166,23 @@ function cellRows(cell) {
   ];
 }
 
+/**
+ * A shared link named something this atlas cannot restore. The view is real and
+ * has been flown to; the selection is gone. Saying so is the whole point — an
+ * empty card would read as "there is nothing here".
+ */
+export function cardForUnresolvedLink(selection) {
+  if (!selection) return null;
+  return card('Selection not restored', [
+    ['asked for', selection.requested ?? '—'],
+    ['why', 'nothing in this atlas carries that id'],
+    ['what did arrive', 'the position, orientation and epoch in the link are intact'],
+  ], 'deep link · the view was restored, the selection was not');
+}
+
 const BUILDERS = {
   star: cardForStar,
+  'unresolved-link': cardForUnresolvedLink,
   field: cardForField,
   landmark: cardForLandmark,
   pulsar: cardForEvent,

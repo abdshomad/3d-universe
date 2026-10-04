@@ -14,6 +14,7 @@ import { attachDoubles } from './data/doubles.js';
 import { figureCitation, figureStarPositions } from './data/figure-stars.js';
 import { sampleIntegrity } from './core/integrity.js';
 import { Cinematic } from './core/cinematic.js';
+import { resolveSelection } from './core/selection-resolver.js';
 import {
   cellIdentity,
   eventIdentity,
@@ -916,9 +917,19 @@ function applySharedView(view) {
     if (slider) slider.value = String(observerYear - new Date().getFullYear());
   }
   if (view.selectionId) {
-    const wanted = String(view.selectionId);
-    const byId = searchIndex?.entries.find((entry) => String(entry.id) === wanted);
-    if (byId) cardSelection = { ...byId, kind: 'landmark' };
+    // Every kind of selection a link can name, and an honest answer when it
+    // names one we cannot restore.
+    const resolved = resolveSelection({
+      selectionId: view.selectionId,
+      searchEntries: searchIndex?.entries ?? [],
+      field: lssField,
+      events: eventPayload?.events ?? [],
+      starIds: starIndex?.tile?.ids ?? null,
+    });
+    atlas.stats.linkSelection = resolved.kind;
+    cardSelection = resolved.kind === 'unknown'
+      ? { kind: 'unresolved-link', requested: resolved.requested }
+      : resolved.selection;
   }
   // A shared view is somebody's chosen vantage, not the route's opening shot.
   freeFlight = true;
