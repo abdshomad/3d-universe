@@ -30,3 +30,8 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   (nearest stars at 1.30 pc), JPL SBDB (Ceres, real orbits), NASA imagery (asset downloads 200).
   Found the Gaia@AIP mirror answers in ~1 s where the official ESA TAP returns an async job with no
   `TABLEDATA`; ESA path now fails loudly instead of returning empty. README added.
+- 2026-10-04 — `n` #2 (sub-plan 01): binary tile format (`ingest/tiles.py`) + `bake` CLI. 11.27
+  B/star, round-trip position error 0.0004 pc at the quantization bound. Tiles carry their own unit —
+  the first small-body bake came out degenerate because parsec quantization collapsed the solar
+  system into one point. Baked counts match the archive exactly: 1413 stars at parallax>50 mas,
+  228 at >100 mas.

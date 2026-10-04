@@ -33,11 +33,14 @@ the ingest package fails loudly on an empty result rather than returning nothing
   fabricated distance — `ingest/astro/distance.py`.
 - [x] Magnitude → size/brightness and B−V → RGB in one place — `ingest/astro/photometry.py`
   (verified: B−V 2.0 renders orange-red, −0.3 blue-white).
-- [ ] `[TODO]` Tile writer: binary, quantized position/mag/color, with a tile index.
+- [x] Tile writer: binary, quantized position/mag/color, in the tile's own unit (pc for stars, AU
+  for small bodies) — `ingest/tiles.py`, 11.27 B/star, round-trip error 0.0004 pc across a 53 pc
+  extent, exactly at the quantization bound.
 - [ ] `[TODO]` `manifest.json`: tile bounds, source catalog + release, row-id range, checksum.
-- [ ] `[TODO]` Bake T1 slice (stars within a configurable distance) and verify counts against the
-  archive.
-- [ ] `[TODO]` Bake T0 slice for the solar system + major small bodies.
+- [x] Bake T1 slice with counts verified against the archive's own COUNT: 1413 objects at parallax
+  > 50 mas and 228 at > 100 mas — exact match.
+- [x] Bake T0 slice for the solar system + major small bodies — 200 asteroids at real positions in
+  AU, round-trip error 6e-5 AU.
 - [ ] `[TODO]` Provenance round-trip test: every id in a tile resolves back to its catalog row.
 - [ ] `[TODO]` Gaia DR4 re-bake path: the DR4 lands 2026-12-02; changing the release must be a config
   edit, not a code change.
