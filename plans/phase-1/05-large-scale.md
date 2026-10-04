@@ -28,10 +28,16 @@ tier says exactly that: it is a model of large-scale structure, not a survey map
   `data.desi.lbl.gov/public/dr1/`; CC BY 4.0 with a required citation to arXiv:2503.14745; but one
   region is 16.25 GB (ELG) and 5.48 GB (LRG), and CosmoDC2 is unreachable from here. The tier is
   therefore generated and badged `SIMULATED`. Recorded in the research doc.
-- [ ] `[TODO]` Generate the density field: a seeded ΛCDM-like volume binned to a low-detail grid,
-  quantized like our star tiles. Generated, not ingested — and labelled as such everywhere.
-- [ ] `[TODO]` Rendering layer: additive density volume — no per-galaxy points. Filaments emerge
-  from the density itself; nothing is drawn "on top" to fake a filament.
+- [x] Generate the density field — `ingest/sources/lss_field.py` plus `ingest field`. A Gaussian
+  random field with a ΛCDM-like linear power spectrum, 96³ over a 500 Mpc radius (10.4 Mpc cells),
+  quantised to bytes with a floor of 0.35 and ceiling of 4.5. Generated in 1.7 s, byte-identical for
+  a given seed. Measured: neighbour difference 0.855 against 0.855 for random pairs — a genuinely
+  correlated field, not noise.
+- [x] Rendering layer — `web/src/render/lss-layer.js`. One additive point per occupied cell,
+  brightness ∝ density excess², so filaments and sheets glow and voids stay empty; nothing is drawn
+  on top to fake structure. Cells outside the declared radius are skipped: the tier is a ball, not the
+  cube it is stored in. 49,410 points at the default threshold, flagged `SIMULATED`, and `parseField`
+  **refuses** a cube that is not flagged simulated.
 - [ ] `[TODO]` Radial LOD: the tier loads coarse-first and refines only where the camera is close
   in *angular* terms, so a distant view costs one tile.
 - [ ] `[TODO]` Seam continuity: cross-fade from the measured-star zone into the statistical zone

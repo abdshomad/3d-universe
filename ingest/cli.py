@@ -33,6 +33,18 @@ def _run_relations(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_field(args: argparse.Namespace) -> int:
+    from ingest.sources.lss_field import write_field
+
+    path = write_field(args.out, grid=args.grid, radius_mpc=args.radius_mpc)
+    header = json.loads(path.read_text(encoding="utf-8"))
+    dataset = header["dataset"]
+    print(f"{header['grid']}^3 field over {header['radius_mpc']} Mpc -> {path}")
+    print(f"flag: {dataset['flag']} | seed: {dataset['seed']} | checksum: {header['checksum'][:16]}")
+    print(f"reference: {dataset['science_reference']}")
+    return 0
+
+
 def _run_landmarks(args: argparse.Namespace) -> int:
     from ingest.sources.landmarks import write_landmarks
 
@@ -189,6 +201,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--out", default="assets/relations/constellations.json"
     )
     relations_parser.set_defaults(func=_run_relations)
+
+    field_parser = sub.add_parser("field", help="regenerate the modelled large-scale field")
+    field_parser.add_argument("--out", default="assets/tiles/lss-field.json")
+    field_parser.add_argument("--grid", type=int, default=96)
+    field_parser.add_argument("--radius-mpc", type=float, default=500.0)
+    field_parser.set_defaults(func=_run_field)
 
     landmarks_parser = sub.add_parser("landmarks", help="verified landmarks with measured distances")
     landmarks_parser.add_argument("--out", default="assets/landmarks/landmarks.json")
