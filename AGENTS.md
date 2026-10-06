@@ -236,3 +236,18 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   budget) — a receipt with its evidence, not a silent pass and not a false
   failure. 349/349 node tests; the drive passes with zero console and page
   errors; the report lives in `docs/perf/first-run.json`.
+- 2026-10-06 — E22 planned: the known-bodies menu. The
+  user asked for a HUD menu of planets, satellites, comets,
+  galaxies, black holes; the atlas holds a cited catalogue
+  for none of those six kinds (small bodies are ingested but
+  not shipped — E19). So the plan is catalogue-first:
+  `plans/celestial-menu.md` with five sub-plans — 01 catalogue
+  survey (a verdict with a receipt per kind: INGEST / HELD /
+  NOT-REACHABLE), 02 ingestion (bricks, tiles, verifiers),
+  03 render primitives (one layer per kind, each
+  budget-deferrable and pickable), 04 the HUD menu (a pure
+  view model over loaded datasets), 05 flight and fact cards
+  (a pick flies and opens a cited card, or says why it
+  cannot). The governing rule: the menu is a projection of
+  what is loaded and cited — a kind with no dataset says so,
+  with the reason. Added to the roadmap as E22.
