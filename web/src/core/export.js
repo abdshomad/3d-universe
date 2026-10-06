@@ -1,16 +1,17 @@
 /**
  * Download the slice: export exactly what is on screen, with its provenance.
  *
- * The export is the last chance for a claim to be honest. A viewer who can
- * check provenance in the UI and then download the rows must find the same
- * strings in the file. So the `flag` column is not decoration: every modelled
- * row carries `SIMULATED`, and any row whose flag is unknown is refused rather
- * than exported as though it were measured.
+ * "What is on screen" is a selection, not a count. The renderer draws
+ * every stride-th star of a drawn tile, up to a draw count, and a
+ * planet is a fact about a host star that is being drawn. A count
+ * cannot say which stars those are, so the selection travels with
+ * the slice — the same walk the renderer takes.
  */
 
 import { METRES_PER_PC } from './units.js';
 import { identityAt, positionAt } from './picker.js';
 import { LIGHT_YEARS_PER_PC } from './light-travel.js';
+import { planetRows } from '../data/exoplanets.js';
 
 /**
  * The three states a row may claim. DERIVED is the one that is easy to forget:
@@ -39,30 +40,55 @@ export function toCsv(columns, rows) {
   return `${lines.join('\n')}\n`;
 }
 
-/** Measured rows: the stars actually drawn, each named by its catalogue id. */
-export function measuredRows({ starIndex, drawnPoints, originMetres = [0, 0, 0], limit = Infinity }) {
-  const tile = starIndex?.tile;
-  if (!tile) return [];
-  const count = Math.min(drawnPoints, tile.count);
+/**
+ * Measured rows: the stars actually drawn, each named by its catalogue id.
+ * @param {{tiles: object[], drawn: Array<{tileId: string, stride: number,
+ *          drawCount: number}>, originMetres?: number[], limit?: number}} target
+ */
+export function measuredRows({ tiles = [], drawn = [], originMetres = [0, 0, 0], limit = Infinity }) {
+  const byId = new Map();
+  for (const tile of tiles) byId.set(tile.header.tile_id, tile);
   const rows = [];
-  for (let index = 0; index < count && rows.length < limit; index += 1) {
-    const identity = identityAt({ tile, index, originMetres });
-    if (!identity) continue; // a row we cannot name is not exported as though we could
-    const position = positionAt(tile, index, originMetres).map((m) => m / METRES_PER_PC);
-    rows.push({
-      id: identity.id,
-      flag: 'MEASURED',
-      x_pc: round(position[0]),
-      y_pc: round(position[1]),
-      z_pc: round(position[2]),
-      distance_pc: round(identity.distancePc, 4),
-      light_travel_yr: round(identity.distancePc * LIGHT_YEARS_PER_PC, 3),
-      magnitude: identity.magnitude,
-      colour_index: identity.colorIndex ?? '',
-      provenance: identity.provenance,
-    });
+  for (const choice of drawn) {
+    const tile = byId.get(choice.tileId);
+    if (!tile) continue; // a tile we cannot name from is not exported from
+    for (let slot = 0; slot < choice.drawCount && rows.length < limit; slot += 1) {
+      // The same walk the layer takes: every stride-th star, clamped
+      // to the last row exactly as the renderer clamps it.
+      const index = Math.min(slot * choice.stride, tile.count - 1);
+      const identity = identityAt({ tile, index, originMetres });
+      if (!identity) continue; // a row we cannot name is not exported as though we could
+      const position = positionAt(tile, index, originMetres).map((m) => m / METRES_PER_PC);
+      rows.push({
+        id: identity.id,
+        flag: 'MEASURED',
+        x_pc: round(position[0]),
+        y_pc: round(position[1]),
+        z_pc: round(position[2]),
+        distance_pc: round(identity.distancePc, 4),
+        light_travel_yr: round(identity.distancePc * LIGHT_YEARS_PER_PC, 3),
+        magnitude: identity.magnitude,
+        colour_index: identity.colorIndex ?? '',
+        provenance: identity.provenance,
+      });
+    }
   }
   return rows;
+}
+
+/**
+ * The indices a selection draws from one tile — the set of stars a
+ * planet can honestly be a fact about. A tile that is not drawn
+ * contributes nothing: an empty sky is not the whole archive.
+ */
+export function drawnIndices({ tile, drawn = [] }) {
+  const choice = (drawn ?? []).find((c) => c.tileId === tile?.header?.tile_id);
+  if (!choice) return new Set();
+  const indices = new Set();
+  for (let slot = 0; slot < choice.drawCount; slot += 1) {
+    indices.add(Math.min(slot * choice.stride, tile.count - 1));
+  }
+  return indices;
 }
 
 /**
@@ -103,14 +129,20 @@ export function modelledRows({ field, level, threshold = 0, limit = Infinity }) 
   return rows;
 }
 
-/** Build the whole slice: what is drawn, measured rows first. */
-export function buildSlice({ starIndex, drawnPoints, originMetres = [0, 0, 0], field = null, level = 1, threshold = 0, limit = Infinity }) {
+/**
+ * Build the whole slice: what is drawn, measured rows first. The planets
+ * ride along, but only the ones whose host the renderer is drawing.
+ */
+export function buildSlice({ tiles = [], drawn = [], starIndex = null, exoplanetReport = null, originMetres = [0, 0, 0], field = null, level = 1, threshold = 0, limit = Infinity }) {
+  const measured = measuredRows({ tiles, drawn, originMetres, limit });
+  const modelled = field ? modelledRows({ field, level, threshold, limit }) : [];
+  // A planet is a fact about its host star: a host the renderer is not
+  // drawing is a system the file would claim to show and does not.
+  const hosts = drawnIndices({ tile: starIndex?.tile, drawn });
+  const planets = exoplanetReport ? planetRows(exoplanetReport, hosts) : [];
   return {
     columns: COLUMNS,
-    rows: [
-      ...measuredRows({ starIndex, drawnPoints, originMetres, limit }),
-      ...(field ? modelledRows({ field, level, threshold, limit }) : []),
-    ],
+    rows: [...measured, ...modelled, ...planets],
   };
 }
 
@@ -119,9 +151,10 @@ export function buildSlice({ starIndex, drawnPoints, originMetres = [0, 0, 0], f
  * what it is. A row that cannot is refused rather than exported as measured.
  */
 export function assertFlagged(rows) {
-  const unflagged = rows.filter((row) => !ALLOWED_FLAGS.has(row.flag));
-  if (unflagged.length > 0) {
-    throw new Error(`${unflagged.length} row(s) carry no flag and will not be exported`);
+  for (const row of rows) {
+    if (!ALLOWED_FLAGS.has(row.flag)) {
+      throw new Error(`a row can carry no flag the export may claim: ${JSON.stringify(row.flag)}`);
+    }
   }
   return rows.length;
 }

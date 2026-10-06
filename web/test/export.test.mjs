@@ -4,23 +4,30 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
-import { assertFlagged, buildSlice, COLUMNS, csvField, measuredRows, modelledRows, toCsv } from '../src/core/export.js';
+import {
+  assertFlagged, buildSlice, COLUMNS, csvField, drawnIndices,
+  measuredRows, modelledRows, toCsv,
+} from '../src/core/export.js';
+import { PLANET_FLAG } from '../src/data/exoplanets.js';
 
-function starIndex(count = 8) {
+function tile(count = 8, tileId = 't') {
   const positions = new Uint16Array(count * 3);
   for (let i = 0; i < count * 3; i += 1) positions[i] = 20000 + i;
   return {
-    tile: {
-      header: {
-        tile_id: 't', unit: 'pc', origin: [0, 0, 0], extent: [100, 100, 100],
-        provenance: { catalog: 'esa.gaia', release: 'DR3' },
-      },
-      ids: Array.from({ length: count }, (_, i) => 500 + i),
-      positions,
-      magnitudes: new Uint16Array(count).fill(8500),
-      count,
+    header: {
+      tile_id: tileId, unit: 'pc', origin: [0, 0, 0], extent: [100, 100, 100],
+      provenance: { catalog: 'esa.gaia', release: 'DR3' },
     },
+    ids: Array.from({ length: count }, (_, i) => 500 + i),
+    positions,
+    magnitudes: new Uint16Array(count).fill(8500),
+    count,
   };
+}
+
+/** The selection the renderer produces for one drawn tile. */
+function drawn(drawCount, { tileId = 't', stride = 1 } = {}) {
+  return [{ tileId, stride, drawCount }];
 }
 
 function field(count = 4, overrides = {}) {
@@ -45,21 +52,47 @@ test('a CSV field is quoted only when its content demands it', () => {
 });
 
 test('the file has a header and one line per row', () => {
-  const csv = toCsv(COLUMNS, [{ id: '1', flag: 'MEASURED' }, { id: '2', flag: 'MEASURED' }]);
-  const lines = csv.trim().split('\n');
-  assert.equal(lines.length, 3);
+  const csv = toCsv(COLUMNS, [{ id: 'a', flag: 'MEASURED' }]);
+  const lines = csv.trimEnd().split('\n');
+  assert.equal(lines.length, 2);
   assert.equal(lines[0], COLUMNS.join(','));
-  assert.ok(lines[0].includes('flag'), 'the flag is a column, not a comment');
+  assert.ok(lines[1].startsWith('a,MEASURED'));
 });
 
 test('only drawn stars are exported', () => {
-  const rows = measuredRows({ starIndex: starIndex(8), drawnPoints: 3 });
+  const rows = measuredRows({ tiles: [tile(8)], drawn: drawn(3) });
   assert.equal(rows.length, 3);
   assert.deepEqual(rows.map((r) => r.id), ['500', '501', '502']);
 });
 
+test('the export walks the stride the renderer walks', () => {
+  // The LOD draws every stride-th star; the file must name
+  // those stars, not the tile's first ones.
+  const rows = measuredRows({ tiles: [tile(8)], drawn: drawn(3, { stride: 2 }) });
+  assert.deepEqual(rows.map((r) => r.id), ['500', '502', '504']);
+});
+
+test('a second tile exports its own stars', () => {
+  const near = tile(4, 'near');
+  const far = tile(4, 'far');
+  far.ids = [900, 901, 902, 903];
+  const rows = measuredRows({
+    tiles: [near, far],
+    drawn: [
+      { tileId: 'near', stride: 1, drawCount: 2 },
+      { tileId: 'far', stride: 1, drawCount: 2 },
+    ],
+  });
+  assert.deepEqual(rows.map((r) => r.id), ['500', '501', '900', '901']);
+});
+
+test('a drawn tile that is not loaded exports nothing', () => {
+  const rows = measuredRows({ tiles: [], drawn: drawn(4) });
+  assert.equal(rows.length, 0);
+});
+
 test('every measured row carries the flag and the catalogue it came from', () => {
-  const rows = measuredRows({ starIndex: starIndex(4), drawnPoints: 4 });
+  const rows = measuredRows({ tiles: [tile(4)], drawn: drawn(4) });
   for (const row of rows) {
     assert.equal(row.flag, 'MEASURED');
     assert.ok(row.provenance.includes('esa.gaia DR3'), row.provenance);
@@ -68,9 +101,9 @@ test('every measured row carries the flag and the catalogue it came from', () =>
 });
 
 test('a star that cannot be named is left out, not exported blank', () => {
-  const broken = starIndex(4);
-  broken.tile.ids[2] = null;
-  const rows = measuredRows({ starIndex: broken, drawnPoints: 4 });
+  const broken = tile(4);
+  broken.ids[2] = null;
+  const rows = measuredRows({ tiles: [broken], drawn: drawn(4) });
   assert.equal(rows.length, 3);
   assert.ok(!rows.some((r) => r.id === ''));
 });
@@ -99,11 +132,48 @@ test('a cell outside the declared radius is not exported', () => {
 });
 
 test('the slice carries both kinds of row, each with its own flag', () => {
-  const slice = buildSlice({ starIndex: starIndex(4), drawnPoints: 4, field: field(4), level: 1, limit: 3 });
+  const slice = buildSlice({ tiles: [tile(4)], drawn: drawn(4), field: field(4), level: 1, limit: 3 });
   const flags = new Set(slice.rows.map((r) => r.flag));
   assert.ok(flags.has('MEASURED'));
   assert.ok(flags.has('SIMULATED'));
   assert.equal(slice.columns, COLUMNS);
+});
+
+test('drawnIndices names the stars the renderer draws', () => {
+  const t = tile(16);
+  assert.deepEqual([...drawnIndices({ tile: t, drawn: drawn(4, { stride: 4 }) })], [0, 4, 8, 12]);
+  assert.deepEqual([...drawnIndices({ tile: t, drawn: [] })], [], 'nothing drawn is nothing on screen');
+});
+
+/** A planet report whose hosts sit at star indices 0 and 5. */
+function planetReport(byStar) {
+  return { byStar, flag: PLANET_FLAG, citation: 'NASA Exoplanet Archive' };
+}
+
+test('a planet of an undrawn host stays in the archive', () => {
+  const t = tile(8);
+  const report = planetReport(new Map([
+    [0, { hostname: 'Near', planets: [{ pl_name: 'Near b', distance_pc: 12, hostname: 'Near' }] }],
+    [5, { hostname: 'Far', planets: [{ pl_name: 'Far b', distance_pc: 13, hostname: 'Far' }] }],
+  ]));
+  const slice = buildSlice({
+    tiles: [t], drawn: drawn(1), starIndex: { tile: t }, exoplanetReport: report,
+  });
+  const hosts = slice.rows.map((r) => r.host).filter(Boolean);
+  assert.deepEqual(hosts, ['Near'], 'only the drawn host is exported');
+});
+
+test('a planet exports when its host is drawn, even at a stride', () => {
+  const t = tile(8);
+  const report = planetReport(new Map([
+    [4, { hostname: 'Fourth', planets: [{ pl_name: 'Fourth b', distance_pc: 12, hostname: 'Fourth' }] }],
+  ]));
+  const prefix = buildSlice({ tiles: [t], drawn: drawn(2), starIndex: { tile: t }, exoplanetReport: report });
+  assert.equal(prefix.rows.filter((r) => r.host === 'Fourth').length, 0,
+    'a host the prefix does not reach is not on screen');
+  const strided = buildSlice({ tiles: [t], drawn: drawn(3, { stride: 2 }), starIndex: { tile: t }, exoplanetReport: report });
+  assert.equal(strided.rows.filter((r) => r.host === 'Fourth').length, 1,
+    'stride 2 draws index 4, so its planet is on screen');
 });
 
 test('the gate refuses a row that cannot say what it is', () => {
@@ -124,18 +194,18 @@ function gradedField() {
 }
 
 test('a cell below the draw threshold is not exported', () => {
-  // The renderer draws from a threshold up; exporting more would claim to show
-  // cells the atlas is not actually showing.
-  const all = modelledRows({ field: gradedField(), level: 1, threshold: 0 }).length;
-  const drawn = modelledRows({ field: gradedField(), level: 1, threshold: 120 }).length;
-  assert.equal(all - drawn, 3, 'the three faint cells are the difference');
-  assert.ok(drawn > 0, 'but the bright cells must survive');
+  const rows = modelledRows({ field: gradedField(), level: 1, threshold: 100 });
+  assert.ok(!rows.some((r) => r.id === 'lss:5'), 'a dim cell is not drawn, so it is not exported');
+  assert.ok(!rows.some((r) => r.id === 'lss:6'));
+  assert.ok(!rows.some((r) => r.id === 'lss:7'));
+  assert.ok(rows.some((r) => r.id === 'lss:0'));
 });
 
 test('the threshold reaches the slice', () => {
-  const slice = buildSlice({ starIndex: starIndex(2), drawnPoints: 2, field: gradedField(), level: 1, threshold: 120 });
-  const open = buildSlice({ starIndex: starIndex(2), drawnPoints: 2, field: gradedField(), level: 1, threshold: 0 });
-  assert.equal(slice.rows.length + 3, open.rows.length);
+  const slice = buildSlice({
+    tiles: [], drawn: [], field: gradedField(), level: 1, threshold: 100, limit: 100,
+  });
+  assert.ok(slice.rows.every((r) => r.id !== 'lss:5'));
 });
 
 test('the header carries the columns only planet rows fill', () => {
@@ -143,6 +213,6 @@ test('the header carries the columns only planet rows fill', () => {
   // the export silently drops them.
   assert.ok(COLUMNS.includes('host'));
   assert.ok(COLUMNS.includes('disc_year'));
-  const measured = measuredRows({ starIndex: starIndex(2), drawnPoints: 2 });
+  const measured = measuredRows({ tiles: [tile(2)], drawn: drawn(2) });
   assert.equal(measured[0].host, undefined, 'a star has no host and must not invent one');
 });

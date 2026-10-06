@@ -212,3 +212,27 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   claim gets measured against or withdrawn, not hoped for. E21 — T2 galactic
   structure: only procedural nebulosity exists; the Planck/HI density sources
   the research names have never been probed from this host.
+- 2026-10-06 — `n` (E16): the first-run drive — `scripts/first-run.py`,
+  Playwright in headless Chromium (SwiftShader) — walks the visitor path
+  cold: land, tour, onboarding, `j` journey, `sirius` search, star click,
+  event click, export, cold link, `r` outward flight. It found four
+  integration bugs no unit test could see, all fixed: (1) `shareView` was
+  gated on free flight, so a visitor on a route — the default state — never
+  got a shareable URL; it is ungated now, with a settle/1 s throttle so a
+  flying sky does not churn the URL every frame. (2) The export modeled
+  "what is on screen" as a count — a prefix of one tile, ignoring the LOD
+  stride, double-counting levels — and exported all 1,440 planets when 0
+  stars were drawn; it now walks the exact drawn selection per tile
+  (stride/drawCount) and exports a planet only when its host is drawn
+  (drive: 3,000 measured stars + 72 of their planets, the file matches the
+  counter to the row). (3) The integrity sampler carried the same
+  count-prefix lie; it walks the same selection now, with a test that proves
+  it follows the stride rather than the tile prefix. (4) Deep links rounded
+  the position to four decimals of a parsec — up to 10 AU — so a cold page
+  landed 1.2e12 m from the shared place; links now carry metres at full
+  precision (`String()` round-trips a double exactly) and the place survives
+  to 0 m. The drive also records what the software profile really is: the
+  frame budget defers the modelled tier (fps 1 against the 20 ms tier
+  budget) — a receipt with its evidence, not a silent pass and not a false
+  failure. 349/349 node tests; the drive passes with zero console and page
+  errors; the report lives in `docs/perf/first-run.json`.

@@ -9,7 +9,7 @@
 import { Raycaster, Vector2, Vector3 } from 'three/webgpu';
 import { FrameBudgetController } from './core/frame-budget.js';
 import { assertFlagged, buildSlice, toCsv } from './core/export.js';
-import { attachPlanets, planetRows } from './data/exoplanets.js';
+import { attachPlanets } from './data/exoplanets.js';
 import { attachDoubles } from './data/doubles.js';
 import { figureCitation, figureStarPositions } from './data/figure-stars.js';
 import { sampleIntegrity } from './core/integrity.js';
@@ -357,12 +357,23 @@ async function start() {
     updateHud();
     epochReadout();
     hintReadout();
-    shareView();
+    shareView(now);
     requestAnimationFrame(loop);
   };
   attachTourButtons();
   offerTour();
   requestAnimationFrame(loop);
+}
+
+/** What the renderer draws right now, in the shape the export and
+ *  the integrity check both need: the drawn set is a selection,
+ *  never a count. */
+function drawnSelection() {
+  return visible.map((chosen) => ({
+    tileId: chosen.id,
+    stride: chosen.stride,
+    drawCount: chosen.drawCount,
+  }));
 }
 
 /**
@@ -371,16 +382,17 @@ async function start() {
  */
 function downloadSlice() {
   const slice = buildSlice({
+    tiles,
+    drawn: drawnSelection(),
     starIndex,
-    drawnPoints: atlas.stats.points,
+    exoplanetReport,
     originMetres: atlas.origin.originMetres,
     field: atlas.stats.lssVisible ? lssField : null,
     level: lssLevel,
     // Whatever the renderer decided to draw is what the file must contain.
     threshold: lssLevels.find((layer) => layer.visible)?.userData.threshold ?? 0,
   });
-  const planets = exoplanetReport ? planetRows(exoplanetReport) : [];
-  const rows = [...slice.rows, ...planets];
+  const rows = slice.rows;
   assertFlagged(rows);
 
   const csv = toCsv(slice.columns, rows);
@@ -402,8 +414,8 @@ function downloadSlice() {
  */
 function checkIntegrity() {
   const report = sampleIntegrity({
-    starIndex,
-    drawnPoints: atlas.stats.points,
+    tiles,
+    drawn: drawnSelection(),
     originMetres: atlas.origin.originMetres,
   });
   atlas.stats.integrity = report;
@@ -1028,18 +1040,35 @@ function applySharedView(view) {
   return true;
 }
 
-/** Publish the current view in the URL, quietly. */
-function shareView() {
-  if (!freeFlight) return;
+let lastShareAt = 0;
+let pendingHash = '';
+let pendingAt = 0;
+
+/**
+ * Publish the current view in the URL, quietly — whatever is on
+ * screen, on a route or off it. A stopped sky is shareable the
+ * moment it stops; a flying one publishes at most once a second so
+ * the URL does not churn every frame.
+ */
+function shareView(now = performance.now()) {
   const hash = encodeView(makeView({
     positionMetres: atlas.rig.positionMetres,
     yaw: (atlas.rig.yaw * 180) / Math.PI,
     pitch: (atlas.rig.pitch * 180) / Math.PI,
-    observerYear,
-    selectionId: cardSelection?.id ?? (selection?.id ? String(selection.id) : null),
+    observerYear: atlas.observerYear,
+    selectionId: cardSelection?.id ?? null,
   }));
   if (hash === lastSharedHash) return;
+  if (hash !== pendingHash) {
+    pendingHash = hash; // a new view waiting to be published
+    pendingAt = now;
+  }
+  const settled = now - pendingAt >= 150;
+  const due = now - lastShareAt >= 1000;
+  if (!settled && !due) return;
   lastSharedHash = hash;
+  pendingHash = '';
+  lastShareAt = now;
   globalThis.history?.replaceState?.(null, '', hash);
 }
 

@@ -108,10 +108,13 @@ function citationOf(report) {
   return 'NASA Exoplanet Archive';
 }
 
-/** Rows for the CSV export: what the archive said, flagged as derived. */
-export function planetRows(report, limit = Infinity) {
+/** Rows for the CSV export: what the archive said about a drawn star.
+ *  A host the renderer is not drawing contributes nothing — a planet
+ *  of an unseen star is a row the file would claim to show and does not. */
+export function planetRows(report, hostIndices = null, limit = Infinity) {
   const rows = [];
-  for (const entry of report.byStar.values()) {
+  for (const [index, entry] of report.byStar.entries()) {
+    if (hostIndices && !hostIndices.has(index)) continue;
     for (const planet of entry.planets) {
       if (rows.length >= limit) return rows;
       rows.push({

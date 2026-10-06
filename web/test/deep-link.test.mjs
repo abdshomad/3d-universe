@@ -9,7 +9,7 @@ import { decodeView, encodeView, isViewFragment, makeView } from '../src/core/de
 
 const PC = 3.0856775814913673e16;
 
-test('a view survives a round trip', () => {
+test('a view survives a round trip, to the metre', () => {
   const view = makeView({
     positionMetres: [1.347 * PC, -0.5 * PC, 0.25 * PC],
     yaw: 270.5,
@@ -19,11 +19,21 @@ test('a view survives a round trip', () => {
   });
   const restored = decodeView(encodeView(view));
   assert.ok(restored);
-  assert.ok(Math.abs(restored.positionMetres[0] - view.positionMetres[0]) < 1e6, 'position to 1 m');
+  assert.deepEqual(restored.positionMetres, view.positionMetres,
+    'the place is the place that was shared');
   assert.equal(restored.yaw, 270.5);
   assert.equal(restored.pitch, -12.25);
   assert.equal(restored.observerYear, 2026);
   assert.equal(restored.selectionId, 'hip:32349');
+});
+
+test('a position four parsec decimals cannot name still lands exactly', () => {
+  // The first-run drive shared a view of Sirius whose position
+  // needs more digits than four decimals of a parsec carry; the
+  // cold page used to land 1.2e12 m — eight AU — away.
+  const position = [81371169230000000, 0, 0]; // 2.6371… pc
+  const restored = decodeView(encodeView(makeView({ positionMetres: position })));
+  assert.deepEqual(restored.positionMetres, position);
 });
 
 test('the same view always encodes to the same string', () => {
@@ -43,9 +53,8 @@ test('junk is ignored, not flown to', () => {
 });
 
 test('an impossible radius is refused', () => {
-  assert.equal(decodeView(`#p=${1e13},0,0&y=0&t=0`), null, 'a parsec radius of 1e13 is not a place');
+  assert.equal(decodeView(`#p=${1e13 * PC},0,0&y=0&t=0`), null, 'a parsec radius of 1e13 is not a place');
 });
-
 test('a nonsense epoch is dropped but the view survives', () => {
   const view = decodeView('#p=1,0,0&y=0&t=0&e=99999999');
   assert.equal(view.observerYear, null);

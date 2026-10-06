@@ -1,0 +1,167 @@
+{
+  "url": "http://127.0.0.1:4038/web/index.html",
+  "steps": [
+    {
+      "step": "landed",
+      "cold_start_seconds": 0.5,
+      "points_drawn": 72219,
+      "backend": "webgl2"
+    },
+    {
+      "step": "tour offered",
+      "title": "THE MEASURED SKY"
+    },
+    {
+      "step": "onboarding speaks",
+      "hint": "HOLD W TO FLY OUT \u00b7 SHIFT FOR SPEED"
+    },
+    {
+      "step": "journey flies",
+      "waypoint": "sol"
+    },
+    {
+      "step": "search flies",
+      "route": "flight to Sirius",
+      "search_result": "hip:32349"
+    },
+    {
+      "step": "star clicked",
+      "cardVisible": true,
+      "name": "Canis Major",
+      "provenance": "Hipparcos, via the VizieR mirror at CDS",
+      "rows": "type  constellation\njoins  HIP 32349 and HIP 33347\nmatch quality  11.6\u2033 \u2014 the worst of its two ends"
+    },
+    {
+      "step": "event clicked",
+      "cardVisible": true,
+      "name": "J0633-2015",
+      "provenance": "ATNF Pulsar Catalogue (Manchester et al.), VizieR B/psr",
+      "rows": "catalogue  J0633-2015\nkind  pulsar\nflux at 400 MHz  \u2014 mJy\nperiod  3.253211 s\nage  13500000 yr\ndistance  7.84 kpc\ndistance from  dispersion-measure"
+    },
+    {
+      "step": "slice exported",
+      "filename": "atlas-slice-3000p.csv",
+      "rows": 3072,
+      "measured": 3000,
+      "derived": 72,
+      "reported": 3072
+    },
+    {
+      "step": "link opened cold",
+      "name": "J0633-2015",
+      "hash": "#p=81371169230476240,0,0&y=40.27&t=70.78&e=0&s=pulsar%3AJ0633-2015",
+      "origin": [
+        81371169230000000,
+        0,
+        0
+      ],
+      "cold_origin": [
+        81371169230000000,
+        0,
+        0
+      ]
+    },
+    {
+      "step": "the tier is deferred by the frame budget",
+      "seconds_waited": 150.0,
+      "tier_budget_ms": 20,
+      "deferred": true,
+      "visible": false,
+      "fade": 0,
+      "level": 1,
+      "fps": 1,
+      "points": 0,
+      "radius_pc": 20000
+    }
+  ],
+  "checks": [
+    {
+      "check": "the tour leaves when dismissed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the opening hint appears",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the journey leaves free flight",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the search previews the match",
+      "ok": true,
+      "detail": "sirius \u00b7 2.637 pc \u00b7 hip 32349"
+    },
+    {
+      "check": "the flight names its target",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "a star pick names an object",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the star card cites its source",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "an event pick names an object",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the event card cites its catalogue",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the slice carries rows",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "the slice carries the stars on screen",
+      "ok": true,
+      "detail": "3000 measured rows"
+    },
+    {
+      "check": "every row says what it is",
+      "ok": true,
+      "detail": "0 unflagged"
+    },
+    {
+      "check": "the file matches the counter",
+      "ok": true,
+      "detail": "3072 rows vs 3072 reported"
+    },
+    {
+      "check": "the link carries a view",
+      "ok": true,
+      "detail": "#p=81371169230476240,0,0&y=40.27&t=70.78&e=0&s=pulsar%3AJ0633-2015"
+    },
+    {
+      "check": "the selection survives the link",
+      "ok": true,
+      "detail": "'J0633-2015' vs 'J0633-2015'"
+    },
+    {
+      "check": "the place survives the link",
+      "ok": true,
+      "detail": "0 m apart"
+    },
+    {
+      "check": "a deferred tier is recorded, not hidden",
+      "ok": true,
+      "detail": "frames at 1 fps against the 20 ms tier budget"
+    }
+  ],
+  "console_errors": [],
+  "page_errors": [],
+  "passed": true
+}

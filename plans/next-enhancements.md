@@ -12,35 +12,8 @@ auto-fly](next-enhancements.md) · [E7 figure stars](next-enhancements.md) · [E
 picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 event
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
 round-trip](next-enhancements.md) · [E13 relation picking](next-enhancements.md) · [E14 pulsar
-verification](next-enhancements.md) · [E15 journey captions](next-enhancements.md) — 329 node tests.
-
----
-
-## E16 — A first run, driven the way a person drives it
-
-**Why now.** Fifty tasks have landed. Each one verified its own thing: the picker picks, the exporter
-exports, the captions appear, the budget defers. Nobody has sat with the atlas and gone *from the door
-to somewhere*, because that is the only path a viewer takes and it is the one path no test exercises.
-
-The evidence that this is a real gap rather than a ceremonial one: every bug this session that a unit
-test could not see was an **integration** bug. A stale `lssLayer` reference throwing inside the frame
-loop. `dropStaleSelection` clearing a selection chosen by a *different* layer. The card quoting
-`distance_pc` while the layer placed the spark with `distance_kpc`. Each was invisible until something
-drove the app and read what came out.
-
-**Scope.** One continuous session, no shortcuts, exactly as a first-time visitor: land and read the
-opening; let the onboarding run; press `j` and let the journey fly; type a name and fly to it; click a
-star and a cell and an event; export the slice; copy the link and open it cold in a fresh page. Every
-step must leave the app in a state the next step can use.
-
-**Invariant that matters.** Nothing in that path may depend on a previous step having happened. Cold
-start, every time — the second load of a URL is the one most viewers never do and therefore the one
-nobody tests.
-
-**Exit.** The whole sequence completes with no console errors, and every artefact it produces — the
-CSV, the link, the card — is the one a person asked for rather than the one a component happened to
-make.
-
+verification](next-enhancements.md) · [E15 journey captions](next-enhancements.md) · [E16 first
+run](next-enhancements.md) — 349 node tests.
 ---
 
 ## E17 — The five catalogues that ship unverified
@@ -176,3 +149,36 @@ project exists to avoid; only a sampled field with a provenance block qualifies.
 **Exit.** Either a measured density layer ships with its provenance block, or
 the research doc and this plan record which sources were probed, which were
 reachable, and why none shipped.
+
+---
+
+## E22 — The known-bodies menu
+
+**Why now.** The atlas holds seven cited datasets and the only
+door to any of them is search-by-name. A visitor who does not
+know a name cannot ask "what is here" — and the user's first
+ask for this project was a menu of planets, satellites, comets,
+galaxies, black holes. Four of those six kinds the atlas holds
+nothing for, and the project's whole argument is that a kind
+without a cited catalogue must not be faked. So the menu is
+planned catalogue-first: research, then ingest, then render,
+then the menu itself.
+
+**Scope.** [`plans/celestial-menu.md`](celestial-menu.md) and its
+five sub-plans — 01 catalogue survey (verdicts with receipts per
+kind), 02 ingestion (bricks, tiles, verifiers), 03 render
+primitives (one layer per kind, each budget-deferrable and
+pickable), 04 the HUD menu (a pure view model over loaded
+datasets), 05 flight and fact cards (a pick flies and opens a
+cited card, or says why it cannot). Consumes E19's SBDB tile
+rather than duplicating it.
+
+**Invariant that matters.** The menu is a projection of what is
+loaded, not a second list. A kind with no dataset says so, with
+the reason — an honest absence is information, a silent one is a
+bug.
+
+**Exit.** The menu in a headless browser lists exactly the loaded
+kinds with their flags, every entry flies and opens a card that
+names its source, and a kind without a catalogue is absent or
+marked not-held — never populated.

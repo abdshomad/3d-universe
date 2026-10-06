@@ -6,60 +6,65 @@
  * being drawn, at the scale you are looking at, each name a catalogue entry
  * with a finite distance and a provenance string. A tile can be intact and a
  * renderer still fail to resolve one of its rows.
+ *
+ * The sample walks the selection the renderer drew — every stride-th star of
+ * a drawn tile — because a count cannot say which stars are on screen.
  */
 
 import { identityAt } from './picker.js';
 
 /**
  * Sample the drawn points and resolve each one.
- * @param {{starIndex: object, drawnPoints: number, originMetres?: number[],
- *          sample?: number}} target
+ * @param {{tiles: object[], drawn: Array<{tileId: string, stride: number,
+ *          drawCount: number}>, originMetres?: number[], sample?: number}} target
  */
-export function sampleIntegrity({ starIndex, drawnPoints, originMetres = [0, 0, 0], sample = 256 }) {
-  const tile = starIndex?.tile;
-  if (!tile) return { checked: 0, resolved: 0, failures: ['no tile is loaded'], ok: false };
-
-  // Sample the drawn range, not the tile: a row nobody can see is not on screen.
-  const count = Math.min(drawnPoints, tile.count);
-  if (count === 0) return { checked: 0, resolved: 0, failures: [], ok: true };
-
+export function sampleIntegrity({ tiles = [], drawn = [], originMetres = [0, 0, 0], sample = 256 }) {
+  const byId = new Map();
+  for (const tile of tiles) byId.set(tile.header.tile_id, tile);
   const failures = [];
-  const cited = tile.header.provenance ?? {};
-  // A card that says "measured" while naming no catalog is the failure this
-  // check exists for: the word is there and the evidence is not.
-  if (!cited.catalog || !cited.release) {
-    return {
-      checked: 0,
-      resolved: 0,
-      failures: [`tile ${tile.header.tile_id} cites no catalog and release`],
-      ok: false,
-    };
-  }
-
-  const steps = Math.min(sample, count);
-  // A stride walk covers the range without clustering on the tile's first rows,
-  // which are the brightest and therefore the least interesting to check.
-  const stride = count / steps;
+  let checked = 0;
   let resolved = 0;
 
-  for (let n = 0; n < steps; n += 1) {
-    const index = Math.min(count - 1, Math.floor(n * stride));
-    const identity = identityAt({ tile, index, originMetres });
-    if (!identity) {
-      failures.push(`row ${index} does not resolve to an identity`);
+  for (const choice of drawn) {
+    const tile = byId.get(choice.tileId);
+    if (!tile) {
+      failures.push(`tile ${choice.tileId} is drawn but not loaded`);
       continue;
     }
-    if (!Number.isFinite(identity.distancePc) || identity.distancePc <= 0) {
-      failures.push(`row ${index} has distance ${identity.distancePc}`);
+    const cited = tile.header.provenance ?? {};
+    // A card that says "measured" while naming no catalog is the failure this
+    // check exists for: the word is there and the evidence is not.
+    if (!cited.catalog || !cited.release) {
+      failures.push(`tile ${tile.header.tile_id} cites no catalog and release`);
       continue;
     }
-    if (!identity.provenance.includes(cited.catalog) || !identity.provenance.includes(cited.release)) {
-      failures.push(`row ${index} carries provenance ${JSON.stringify(identity.provenance)}, `
-        + `which does not cite ${cited.catalog} ${cited.release}`);
-      continue;
+    const count = Math.min(choice.drawCount, tile.count);
+    if (count === 0) continue;
+    // A stride walk covers the drawn set without clustering on the tile's
+    // first rows, which are the brightest and least interesting to check.
+    const steps = Math.min(sample, count);
+    const walk = count / steps;
+    for (let n = 0; n < steps; n += 1) {
+      const slot = Math.min(count - 1, Math.floor(n * walk));
+      const index = Math.min(slot * choice.stride, tile.count - 1);
+      const identity = identityAt({ tile, index, originMetres });
+      if (!identity) {
+        failures.push(`row ${index} does not resolve to an identity`);
+        continue;
+      }
+      if (!Number.isFinite(identity.distancePc) || identity.distancePc <= 0) {
+        failures.push(`row ${index} has distance ${identity.distancePc}`);
+        continue;
+      }
+      if (!identity.provenance.includes(cited.catalog) || !identity.provenance.includes(cited.release)) {
+        failures.push(`row ${index} carries provenance ${JSON.stringify(identity.provenance)}, `
+          + `which does not cite ${cited.catalog} ${cited.release}`);
+        continue;
+      }
+      resolved += 1;
     }
-    resolved += 1;
+    checked += steps;
   }
 
-  return { checked: steps, resolved, failures, ok: failures.length === 0 };
+  return { checked, resolved, failures, ok: failures.length === 0 };
 }

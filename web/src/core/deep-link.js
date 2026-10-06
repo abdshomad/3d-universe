@@ -9,6 +9,7 @@
 
 const PARSEC_TO_METRES = 3.0856775814913673e16;
 const MAX_PARSECS = 1e12;
+const MAX_METRES = MAX_PARSECS * PARSEC_TO_METRES;
 const MAX_YEAR = 1e6;
 
 const toFinite = (value, fallback = null) => {
@@ -29,13 +30,18 @@ export function makeView({ positionMetres = [0, 0, 0], yaw = 0, pitch = 0, obser
 
 /**
  * Encode a view as a URL hash fragment.
- * @returns {string} like `#p=1.347,-0.001,0.004&y=270.0&t=12.5&e=2026&s=hip:32349`
+ * @returns {string} like `#p=81371169230000000,0,0&y=270.0&t=12.5&e=2026&s=hip:32349`
  */
 export function encodeView(view) {
   const ifinite = toFinite;
   const position = (view?.positionMetres ?? []).map((value) => ifinite(value, 0));
-  const parsecs = position.map((metres) => metres / PARSEC_TO_METRES);
-  const parts = [`p=${parsecs.map((v) => v.toFixed(4)).join(',')}`];
+  // Metres at full precision, because a shared view must land
+  // where it says: four decimals of a parsec is ten AU of
+  // error, which is the difference between Sirius and an
+  // empty patch of Canis Major. String() is the shortest
+  // form that round-trips a double exactly, so the decode
+  // returns the same metres the encode was given.
+  const parts = [`p=${position.map((v) => String(v)).join(',')}`];
   parts.push(`y=${ifinite(view?.yaw, 0).toFixed(2)}`);
   parts.push(`t=${ifinite(view?.pitch, 0).toFixed(2)}`);
   if (ifinite(view?.observerYear, null) !== null) parts.push(`e=${Math.round(ifinite(view.observerYear))}`);
@@ -60,8 +66,8 @@ export function decodeView(hash) {
   const rawPosition = (fields.p ?? '').split(',').map(Number);
   if (rawPosition.length !== 3 || rawPosition.some((value) => !Number.isFinite(value))) return null;
 
-  const radiusPc = Math.hypot(...rawPosition);
-  if (radiusPc > MAX_PARSECS) return null;
+  const radiusMetres = Math.hypot(...rawPosition);
+  if (radiusMetres > MAX_METRES) return null;
 
   const yaw = toFinite(fields.y, 0);
   const pitch = toFinite(fields.t, 0);
@@ -74,7 +80,7 @@ export function decodeView(hash) {
   }
 
   return makeView({
-    positionMetres: rawPosition.map((value) => value * PARSEC_TO_METRES),
+    positionMetres: rawPosition,
     yaw,
     pitch,
     observerYear,
