@@ -204,3 +204,11 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   in `data/tour.js`, paint in `ui/tour.js`; verified in headless Chromium
   (15/15 checks, including not-offered-twice and the walk closing on
   'done'). 341/341 tests pass.
+- 2026-10-06 — `e`: decomposed the next three PRD enhancements. E19 — the
+  solar system tier: SBDB is ingested, baked and verifiable on the Python side
+  but no tile ships and nothing renders it, so a visitor can fly to 500 Mpc
+  and never see Ceres. E20 — the 100,000-star success criterion: the shipped
+  tile carries 60,000 and the reachable Gaia mirror caps near 62,723, so the
+  claim gets measured against or withdrawn, not hoped for. E21 — T2 galactic
+  structure: only procedural nebulosity exists; the Planck/HI density sources
+  the research names have never been probed from this host.
