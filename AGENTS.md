@@ -196,3 +196,11 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   ephemeral port (in-process listeners keep `node --test`'s event loop alive and hang
   the run). 4 serve tests; 333/333 pass; verified live through the tunnel: `/` → 302
   → `/web/index.html` → 200.
+- 2026-10-06 — feature: the tour. A new visitor is offered a seven-stop
+  walk once - sky, search, click, epoch, routes, badge, export - and each
+  stop rings the HUD piece it describes. T replays it, Escape or skip ends
+  it, and `localStorage` remembers the visitor so it is offered once. The
+  hint slot yields while the walk runs. Pure logic in `core/tour.js`, copy
+  in `data/tour.js`, paint in `ui/tour.js`; verified in headless Chromium
+  (15/15 checks, including not-offered-twice and the walk closing on
+  'done'). 341/341 tests pass.

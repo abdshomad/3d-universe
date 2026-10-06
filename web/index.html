@@ -105,6 +105,27 @@
       #hint { position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%);
         color: var(--ink-dim); letter-spacing: 0.2em; white-space: nowrap; }
       #hint:empty { display: none; }
+      /* The tour: one offered walk. Small chrome, a ring on the
+         stop it means, and it never takes the pointer away from
+         the sky except on its own buttons. */
+      #tour { position: absolute; bottom: 120px; left: 50%;
+        transform: translateX(-50%); width: 340px; padding: 12px 14px;
+        border: 1px solid rgba(138, 143, 152, 0.3); background: rgba(5, 6, 10, 0.72); }
+      #tour[hidden] { display: none; }
+      #tour .title { color: #c6cad2; letter-spacing: 0.22em; }
+      #tour .text { margin-top: 7px; color: var(--ink); letter-spacing: 0.06em;
+        text-transform: none; line-height: 1.7; white-space: normal; }
+      #tour .row { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+      #tour .count { color: var(--ink-dim); font-size: 9px; letter-spacing: 0.2em; }
+      #tour .row .spacer { flex: 1; }
+      #tour button { pointer-events: auto; background: none;
+        border: 1px solid rgba(138, 143, 152, 0.3); color: var(--ink-dim);
+        font: inherit; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+        padding: 5px 9px; cursor: pointer; }
+      #tour button:hover:not(:disabled) { color: #c6cad2;
+        border-color: rgba(198, 202, 210, 0.5); }
+      #tour button:disabled { opacity: 0.35; cursor: default; }
+      [data-tour-spot] { outline: 1px solid rgba(198, 202, 210, 0.85); outline-offset: 3px; }
     </style>
   </head>
   <body>
@@ -138,6 +159,17 @@
 
       <div id="caption" hidden></div>
       <div id="hint"></div>
+    <div id="tour" hidden>
+      <div class="title" data-tour="title"></div>
+      <div class="text" data-tour="text"></div>
+      <div class="row">
+        <button type="button" data-tour="back">back</button>
+        <span class="spacer"></span>
+        <span class="count" data-tour="count"></span>
+        <button type="button" data-tour="next">next</button>
+        <button type="button" data-tour="skip">skip</button>
+      </div>
+    </div>
       <div id="epoch-line">sky epoch —</div>
       <input id="epoch" type="range" min="-10000" max="10000" step="10" value="0"
              aria-label="observer epoch, years from now" />

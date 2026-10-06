@@ -59,6 +59,9 @@ import { motionPolicy, prefersReducedMotion } from './core/accessibility.js';
 import { decodeView, encodeView, makeView } from './core/deep-link.js';
 import { captionFor } from './data/captions.js';
 import { OPENING_STEPS } from './data/onboarding.js';
+import { TOUR_STEPS } from './data/tour.js';
+import { Tour } from './core/tour.js';
+import { renderTour, highlightTourTarget } from './ui/tour.js';
 const flight = new FlightController();
 const keys = new Set();
 let freeFlight = false;
@@ -70,6 +73,10 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (key === 'escape') {
+    if (tour.active) {
+      endTour();
+      return;
+    }
     stopCinematic('escape');
     guide.dismiss();
     document.activeElement?.blur?.();
@@ -78,6 +85,11 @@ window.addEventListener('keydown', (event) => {
   if (key === 'c' && document.activeElement?.id !== 'search') {
     if (cinematic.active) stopCinematic('key');
     else startCinematic();
+    return;
+  }
+  // The walk can be asked for again: T replays it.
+  if (key === 't' && document.activeElement?.id !== 'search') {
+    startTour();
     return;
   }
   // Any flight input is an answer. No grace period.
@@ -149,6 +161,23 @@ function attachSearchBox() {
   const box = document.getElementById('search');
   const result = document.getElementById('search-result');
   if (!box || !searchIndex) return;
+  // Say what matches while it is being typed. Before this, the box stayed empty
+  // until Enter, so a viewer who mistyped had no way to tell a name that matches
+  // from one that does not until the flight had already started.
+  const preview = () => {
+    const query = box.value.trim();
+    if (!query) {
+      result.textContent = '';
+      return null;
+    }
+    const match = searchIndex.best(query);
+    result.textContent = match
+      ? `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`
+      : `nothing found for "${query}"`;
+    return match;
+  };
+  box.addEventListener('input', preview);
+
   box.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
     const match = searchIndex.best(box.value);
@@ -331,6 +360,8 @@ async function start() {
     shareView();
     requestAnimationFrame(loop);
   };
+  attachTourButtons();
+  offerTour();
   requestAnimationFrame(loop);
 }
 
@@ -957,6 +988,8 @@ let lssLevel = 2;
 const LSS_FADE_END_MPC = 8;
 let observerYear = new Date().getFullYear();
 const guide = new Onboarding(OPENING_STEPS, { now: () => performance.now() / 1000 });
+const tour = new Tour(TOUR_STEPS);
+const TOUR_SEEN_KEY = 'u3-tour-seen';
 // Someone who asks for reduced motion gets a still sky: no self-flying, no drift.
 const motion = motionPolicy({ reduced: prefersReducedMotion() });
 const sharedView = decodeView(globalThis.location?.hash ?? '');
@@ -1010,12 +1043,86 @@ function shareView() {
   globalThis.history?.replaceState?.(null, '', hash);
 }
 
-/** The single hint line, when there is something worth saying. */
+/** The single hint line, when there is something worth saying.
+ *  While the tour runs it owns the visitor's attention. */
 function hintReadout() {
   const line = document.getElementById('hint');
   if (!line) return;
+  if (tour.active) {
+    line.textContent = '';
+    return;
+  }
   const hint = guide.current();
   line.textContent = hint ? hint.text : '';
+}
+
+/** A visitor is offered the walk once; the flag is theirs, not the app's. */
+function tourSeen() {
+  try {
+    return globalThis.localStorage?.getItem(TOUR_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markTourSeen() {
+  try {
+    globalThis.localStorage?.setItem(TOUR_SEEN_KEY, '1');
+  } catch {
+    /* private mode: the walk will simply be offered again */
+  }
+}
+
+/** Paint the tour, or put it away. One writer, like the caption. */
+function paintTour() {
+  const panel = document.getElementById('tour');
+  if (!panel) return;
+  const step = tour.current();
+  if (!step) {
+    panel.hidden = true;
+    highlightTourTarget(document, null);
+    return;
+  }
+  panel.hidden = false;
+  renderTour(panel, step);
+  highlightTourTarget(document, step.target);
+}
+
+/** Offer the walk: it takes the sky's attention, so it takes the cinematic too. */
+function startTour() {
+  if (!tour.steps.length) return;
+  stopCinematic('tour');
+  tour.start();
+  paintTour();
+}
+
+/** End the walk and remember the visitor, so it is offered once. */
+function endTour() {
+  tour.skip();
+  markTourSeen();
+  paintTour();
+}
+
+/** A new visitor gets the walk once, after the sky has settled. */
+function offerTour() {
+  if (tourSeen()) return;
+  setTimeout(() => {
+    if (!tourSeen() && tour.finished) startTour();
+  }, 2500);
+}
+
+function attachTourButtons() {
+  const panel = document.getElementById('tour');
+  if (!panel) return;
+  panel.querySelector('[data-tour=next]')?.addEventListener('click', () => {
+    if (!tour.next()) markTourSeen();
+    paintTour();
+  });
+  panel.querySelector('[data-tour=back]')?.addEventListener('click', () => {
+    tour.back();
+    paintTour();
+  });
+  panel.querySelector('[data-tour=skip]')?.addEventListener('click', endTour);
 }
 
 /** The scrubber moves the observer's epoch. It does not re-render the sky: our
