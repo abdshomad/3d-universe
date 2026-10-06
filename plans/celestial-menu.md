@@ -22,13 +22,20 @@ the exact lie this project exists to avoid (PRD decision 1,
 | exoplanets | NASA Exoplanet Archive (`relations/exoplanets.json`) | facts on host cards |
 | pulsars | ATNF psrcat (spark markers) | rendered, picked |
 | small bodies | JPL SBDB (`ingest/sources/sbdb.py`) | rendered, picked, searched — E19 |
+| **planets** | JPL Horizons API (9 bodies, vectors + APmag at epoch) | **INGEST — sub-plan 01** |
+| **satellites** | JPL Horizons API (21 major moons, vectors + APmag) | **INGEST — sub-plan 01** |
+| **comets** | JPL SBDB Query API, `sb-kind=c` (4,077) | **INGEST — sub-plan 01** |
+| **galaxies** | VizieR TAP, RC3 `VII/155/rc3` (10,618 of 23,011 carry cz) | **INGEST — sub-plan 01** |
+| **black holes** | VizieR, Corral-Santana 2016 `J/A+A/587/A61` (33 of 57 carry distances) | **INGEST — sub-plan 01** |
 | deep fields | Webb/Hubble imagery | backdrop planes |
 | large-scale structure | generated field | rendered, badged SIMULATED |
 
-Missing from the user's list: solar-system majors, satellites,
-comets as first-class kinds, individual galaxies, black holes.
-Whether each can exist at all is a *research* question, not an
-engineering one — so the plan runs catalogue-first.
+Verdicts with receipts: `docs/deep-research/celestial-bodies.md`.
+Refused with receipts: NED (form-only, no API), HyperLEDA
+(unreachable), SIMBAD `otype=BH` (3 objects — a tag, not a
+catalogue), arXiv (literature, not bodies), UGC (not a VizieR
+table — RC3 carries its designations), Gaia NSS (not on the
+reachable TAP).
 
 ## Locked decisions this plan must not contradict
 
