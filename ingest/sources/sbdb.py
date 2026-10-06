@@ -18,6 +18,7 @@ from ingest.astro.orbits import (
     ecliptic_to_equatorial,
     earth_heliocentric_au,
     heliocentric_ecliptic_km,
+    julian_to_iso,
 )
 from ingest.http import build_url, fetch_json, now_iso
 from ingest.schema import MEASURED, CatalogObject, Provenance
@@ -86,6 +87,21 @@ def _to_object(row: dict, prov: Provenance) -> CatalogObject | None:
         mag=mag,
         color_index=None,
         provenance=prov,
+        extra={
+            "name": (row.get("full_name") or "").strip() or None,
+            "designation": (row.get("pdes") or "").strip() or None,
+            "H": abs_mag,
+            "diameter_km": _number(row.get("diameter")),
+            "epoch_jd": elements.epoch_jd,
+            "epoch": julian_to_iso(elements.epoch_jd),
+            "a_au": elements.a_au,
+            "e": elements.e,
+            "i_deg": elements.i_deg,
+            "om_deg": elements.om_deg,
+            "w_deg": elements.w_deg,
+            "ma_deg": elements.ma_deg,
+            "distance_au": delta_au,
+        },
     )
 
 

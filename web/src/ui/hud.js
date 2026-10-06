@@ -9,13 +9,22 @@
  * anything that grows past that is the scene's fault, not the HUD's.
  */
 
-import { cardFor, cardForField, cardForStar, formatDistance } from './fact-card.js';
+import {
+  cardFor,
+  cardForEvent,
+  cardForField,
+  cardForLandmark,
+  cardForSmallBody,
+  cardForStar,
+  formatDistance,
+} from './fact-card.js';
 
 export {
   cardFor,
   cardForEvent,
   cardForField,
   cardForLandmark,
+  cardForSmallBody,
   cardForStar,
   formatDistance,
 } from './fact-card.js';

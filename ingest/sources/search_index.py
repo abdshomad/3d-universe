@@ -6,7 +6,9 @@ measured distance has no place in a three-dimensional index, and inventing one
 is exactly the failure this project refuses.
 
 Landmark names from `assets/landmarks/landmarks.json` are merged in by HIP, so
-searching "Sirius" and searching "32349" find the same star.
+searching "Sirius" and searching "32349" find the same star. Small bodies
+from JPL SBDB are merged in the same way, so searching "Ceres" and
+searching "sbdb:20000001" find the same body.
 """
 
 from __future__ import annotations
@@ -85,6 +87,55 @@ def write_index(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload), encoding="utf-8")
     return target
+
+
+def build_sbdb_entries(records: list[Any]) -> list[dict[str, Any]]:
+    """Small bodies as search entries: a name or an spkid, a flight out.
+
+    A small body's distance is an epoch-bound number, not a parallax,
+    so the entry says which is which -- the same honesty the cards
+    carry.
+    """
+    entries: list[dict[str, Any]] = []
+    for record in records:
+        extra = record.extra
+        entries.append({
+            "id": f"sbdb:{record.source_id}",
+            "name": extra.get("name"),
+            "ra_deg": round(record.ra_deg, 6),
+            "dec_deg": round(record.dec_deg, 6),
+            "distance_pc": round(record.distance_pc, 9),
+            "distance_au": round(extra.get("distance_au"), 4),
+            "visual_magnitude": extra.get("H"),
+            "distance_source": "sbdb-orbital-elements",
+            "kind": "small_body",
+            "diameter_km": extra.get("diameter_km"),
+            "epoch": extra.get("epoch"),
+            "epoch_jd": extra.get("epoch_jd"),
+        })
+    return entries
+
+
+def merge_sbdb(index_path: str | Path, records: list[Any]) -> int:
+    """Append small bodies to a written index, replacing any prior pass.
+
+    Idempotent: re-running with the same catalogue writes the same
+    index, and re-baking the tile re-merges without duplicating.
+    """
+    target = Path(index_path)
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    entries = payload.get("entries", [])
+    kept = [
+        entry for entry in entries
+        if not str(entry.get("id", "")).startswith("sbdb:")
+    ]
+    fresh = build_sbdb_entries(records)
+    payload["entries"] = kept + fresh
+    payload["count"] = len(payload["entries"])
+    payload["small_bodies"] = len(fresh)
+    payload["small_body_source"] = records[0].provenance.source_url if fresh else None
+    target.write_text(json.dumps(payload), encoding="utf-8")
+    return len(fresh)
 
 
 def _number(value: str | None) -> float | None:

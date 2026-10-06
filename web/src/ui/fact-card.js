@@ -134,6 +134,25 @@ export function cardForEvent(event, { observerYear } = {}) {
 }
 
 /**
+ * A small body from the SBDB tile. The orbital epoch row is the
+ * point: a small body's position is an epoch, not a fact, and a
+ * card that does not say which epoch is showing a past Ceres as
+ * though it were tonight's.
+ */
+export function cardForSmallBody(selection, { observerYear } = {}) {
+  if (!selection) return null;
+  const light = lightRow(selection.distancePc, observerYear);
+  return card(selection.name || `small body ${selection.id}`, [
+    ['spkid', selection.id],
+    ['diameter', selection.diameter_km != null ? `${formatNumber(selection.diameter_km, 1)} km` : null],
+    ['absolute magnitude H', formatNumber(selection.H ?? selection.visual_magnitude, 2)],
+    ['orbital epoch', selection.epoch ?? null],
+    ['distance', selection.distance_au != null ? `${formatNumber(selection.distance_au, 3)} AU` : null],
+    ...(light ? [light] : []),
+  ], selection.provenance ?? 'nasa.jpl.sbdb live · U3DTILE2 · measured');
+}
+
+/**
  * The modelled large-scale tier. This card exists mostly to say what the tier
  * is *not*: a model of structure, never a survey map. Nothing here was measured.
  */
@@ -204,6 +223,7 @@ const BUILDERS = {
   pulsar: cardForEvent,
   frb: cardForEvent,
   gravitational_wave: cardForEvent,
+  small_body: cardForSmallBody,
 };
 
 /**

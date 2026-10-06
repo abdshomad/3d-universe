@@ -84,7 +84,12 @@ export function resolveSelection({
   }
 
   const entry = searchEntries.find((candidate) => String(candidate.id) === requested);
-  if (entry) return { kind: 'landmark', requested, selection: { ...entry, kind: 'landmark' } };
+  if (entry) {
+    // The entry says what it is: a small body resolves to its own
+    // card, not to the landmark card every typed name used to get.
+    const kind = entry.kind ?? 'landmark';
+    return { kind, requested, selection: { ...entry, kind } };
+  }
 
   if (starIds) {
     const index = starIds.findIndex((value) => String(value) === requested);

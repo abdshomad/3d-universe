@@ -17,8 +17,15 @@ export class SearchIndex {
   constructor(entries = []) {
     this.entries = entries;
     this.byHip = new Map();
+    this.bySpkid = new Map();
     for (const entry of entries) {
       if (typeof entry.hip === 'number') this.byHip.set(entry.hip, entry);
+      // A small body answers to its spkid the way a star answers to
+      // its HIP number: a catalogue number is a name here too.
+      if (entry.kind === 'small_body' && typeof entry.id === 'string') {
+        const spkid = Number(entry.id.split(':')[1]);
+        if (Number.isInteger(spkid)) this.bySpkid.set(spkid, entry);
+      }
     }
   }
 
@@ -38,7 +45,8 @@ export class SearchIndex {
   byNumber(text) {
     const match = String(text).trim().match(/^(?:hip\s*)?(\d+)$/i);
     if (!match) return null;
-    return this.byHip.get(Number(match[1])) ?? null;
+    const number = Number(match[1]);
+    return this.byHip.get(number) ?? this.bySpkid.get(number) ?? null;
   }
 
   /**

@@ -89,6 +89,28 @@ def apparent_magnitude(absolute_mag: float, r_au: float, delta_au: float) -> flo
     return absolute_mag + 5.0 * math.log10(r_au * delta_au)
 
 
+def julian_to_iso(jd: float) -> str:
+    """A Julian date to a calendar date (Fliegel-Van Flandern).
+
+    The epoch a small body's elements are valid for is what makes
+    its position a fact rather than a guess, so it is written as a
+    date a person can read, not a bare Julian number.
+    """
+    z = int(jd + 0.5)
+    fraction = (jd + 0.5) - z
+    if z >= 2299161:
+        alpha = int((z - 1867216.25) / 36524.25)
+        z = z + 1 + alpha - int(alpha / 4)
+    b = z + 1524
+    c = int((b - 122.1) / 365.25)
+    d = int(365.25 * c)
+    e = int((b - d) / 30.6001)
+    day = b - d - int(30.6001 * e) + fraction
+    month = e - 1 if e < 14 else e - 13
+    year = c - 4716 if month > 2 else c - 4715
+    return f"{year:04d}-{month:02d}-{int(day):02d}"
+
+
 def earth_heliocentric_au(jd: float) -> tuple[float, float, float]:
     """Low-precision Earth position (JPL approximate elements, J2000 ecliptic).
 

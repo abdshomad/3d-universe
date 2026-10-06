@@ -83,9 +83,19 @@ def check_landmarks(payload: dict, hipparcos: dict[int, dict[str, str]]) -> dict
 
 
 def check_nearby(payload: dict, hipparcos: dict[int, dict[str, str]]) -> dict:
-    """Every nearby star resolves, and still obeys the builder's parallax rule."""
+    """Every nearby star resolves, and still obeys the builder's parallax rule.
+
+    Small bodies share the index -- one search box, one
+    roll call -- but hold no parallax: their distance is
+    orbital elements at an epoch, and check_small_bodies
+    verifies them against SBDB.
+    """
     problems: list[dict] = []
-    for star in payload["entries"]:
+    stars = [
+        star for star in payload["entries"]
+        if star.get("kind") != "small_body"
+    ]
+    for star in stars:
         row = hipparcos.get(star["hip"])
         if row is None:
             problems.append(_problem(f"hip:{star['hip']}", "no Hipparcos row", "present", "absent"))
@@ -96,7 +106,7 @@ def check_nearby(payload: dict, hipparcos: dict[int, dict[str, str]]) -> dict:
         if parallax is None or parallax < MIN_PARALLAX_MAS:
             problems.append(_problem(identifier, "parallax below the 1 mas rule",
                                      star["parallax_mas"], parallax))
-    return _report(payload["count"], problems, "I/239/hip_main")
+    return _report(len(stars), problems, "I/239/hip_main")
 
 
 def check_figure_stars(payload: dict, hipparcos: dict[int, dict[str, str]]) -> dict:

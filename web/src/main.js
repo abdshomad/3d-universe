@@ -47,6 +47,7 @@ import {
 import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
 import { createSparkLayers } from './render/sparks.js';
+import { createAdditivePoints } from './render/point-layer.js';
 import { METRES_PER_PC, metresToPc } from './core/units.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
@@ -111,10 +112,18 @@ const FIGURE_STAR_DIR = '../assets/relations/figure-stars.json';
 const DOUBLE_DIR = '../assets/relations/binaries.json';
 const EXOPLANET_DIR = '../assets/relations/exoplanets.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
+const SMALL_BODY_DIR = '../assets/tiles/sbdb-small-bodies.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
 const SEARCH_DIR = '../assets/search/nearby.json';
 let eventPayload = null;
 let sparkLayers = [];
+// The solar-system tier: one AU-quantized tile plus its sidecar
+// rows (names, diameters, the epoch each position is valid for),
+// drawn as its own layer so a small body is never a star.
+let smallBodyTile = null;
+let smallBodyPayload = null;
+const smallBodyRows = new Map();
+let smallBodyLayers = [];
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
 let journeyRoute = null;
@@ -171,9 +180,7 @@ function attachSearchBox() {
       return null;
     }
     const match = searchIndex.best(query);
-    result.textContent = match
-      ? `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`
-      : `nothing found for "${query}"`;
+    result.textContent = match ? searchResultText(match) : `nothing found for "${query}"`;
     return match;
   };
   box.addEventListener('input', preview);
@@ -188,11 +195,20 @@ function attachSearchBox() {
     const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
     const path = flightPathTo(match, { fromPc });
     guide.record('searched');
-    cardSelection = { ...match, kind: 'landmark' };
+    cardSelection = { ...match, kind: match.kind ?? 'landmark' };
     switchRoute(path, `flight to ${match.name ?? `HIP ${match.hip}`}`);
-    result.textContent = `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`;
+    result.textContent = searchResultText(match);
     atlas.stats.searchResult = match.id;
   });
+}
+
+/** The line under the search box: what matched, in its own units. */
+function searchResultText(match) {
+  if (match.kind === 'small_body') {
+    const spkid = String(match.id).split(':')[1];
+    return `${match.name ?? 'small body'} · ${match.distance_au?.toFixed(3)} AU · spkid ${spkid}`;
+  }
+  return `${match.name ?? `HIP ${match.hip}`} · ${match.distance_pc.toFixed(3)} pc · HIP ${match.hip}`;
 }
 
 function switchRoute(next, name) {
@@ -242,6 +258,12 @@ async function start() {
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
   for (const entry of manifest.tiles) {
+    if (entry.unit === 'au') {
+      // The solar-system tier is not star LOD material: one
+      // small tile in its own unit, always drawn in full.
+      smallBodyTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
     tree.addFromManifest(entry);
     tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
   }
@@ -270,6 +292,12 @@ async function start() {
     figureStarPayload = figurePayload;
   }
   eventPayload = await loadJson(EVENT_DIR).catch(() => null);
+  smallBodyPayload = await loadJson(SMALL_BODY_DIR).catch(() => null);
+  if (smallBodyPayload?.bodies?.length) {
+    for (const body of smallBodyPayload.bodies) {
+      smallBodyRows.set(String(body.spkid), body);
+    }
+  }
 
   const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
   starIndex = new StarIndex(biggest.worldPositions);
@@ -589,6 +617,7 @@ function rebuildMediums(scale) {
   rebuildRibbons(scale);
   rebuildReticle();
   rebuildSparks(scale);
+  rebuildSmallBodies();
 }
 
 /** Event markers. An event is only placed when the catalogue gives a distance:
@@ -634,6 +663,97 @@ function rebuildSparks() {
 }
 
 /**
+ * The solar-system tier. Small bodies are points, not stars:
+ * they shine by reflected sunlight, so their colour says
+ * nothing about a temperature and the layer is one flat
+ * amber rather than a blackbody ramp. The measured word
+ * rides on the layer's provenance, the way every other
+ * measured tier carries it.
+ */
+function rebuildSmallBodies() {
+  for (const layer of smallBodyLayers) {
+    atlas.scene.remove(layer);
+    layer.geometry.dispose();
+    layer.material.dispose();
+  }
+  smallBodyLayers = [];
+  if (!smallBodyTile) return;
+
+  // Positions are render-space metres at the current origin,
+  // like every other layer rebuilt with the medium.
+  const positions = new Float32Array(
+    decodeAllPositions(smallBodyTile, atlas.origin.originMetres),
+  );
+  const count = smallBodyTile.count;
+  const colours = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  for (let index = 0; index < count; index += 1) {
+    colours[3 * index] = 1.0;
+    colours[3 * index + 1] = 0.69;
+    colours[3 * index + 2] = 0.12;
+    // Size follows the apparent magnitude the tile carries:
+    // a rendering choice keyed to a measured brightness,
+    // not an invented angular diameter.
+    const apparent = smallBodyTile.mag ? smallBodyTile.mag[index] / 1000 : 12;
+    sizes[index] = Math.max(2, Math.min(8, 10 - 0.6 * apparent));
+  }
+  const layer = createAdditivePoints({
+    positions,
+    colours,
+    sizes,
+    name: 'small-bodies',
+  });
+  layer.userData.tileId = smallBodyTile.header.tile_id;
+  smallBodyLayers = [layer];
+  atlas.scene.add(layer);
+  atlas.stats.smallBodies = count;
+}
+
+/**
+ * Small bodies are picked in screen space, like the modelled
+ * cells: they are points a few pixels wide, and a depth-scaled
+ * raycast threshold would make them unclickable at 3 AU.
+ */
+function pickSmallBodyAt(ndc) {
+  if (smallBodyLayers.length === 0 || !smallBodyTile) return null;
+  const rect = canvas.getBoundingClientRect();
+  const layer = smallBodyLayers[0];
+  const positions = layer.geometry.attributes.position.array;
+  const count = positions.length / 3;
+  const projected = new Float64Array(count * 3);
+  const vertex = new Vector3();
+  for (let i = 0; i < count; i += 1) {
+    vertex.set(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
+      .project(atlas.camera);
+    projected[3 * i] = vertex.x;
+    projected[3 * i + 1] = vertex.y;
+    projected[3 * i + 2] = vertex.z;
+  }
+  const hit = nearestCellOnScreen(projected, ndc, {
+    width: rect.width,
+    height: rect.height,
+    maxPixels: 12,
+  });
+  if (!hit) return null;
+  const identity = identityAt({
+    tile: smallBodyTile,
+    index: hit.index,
+    originMetres: atlas.origin.originMetres,
+  });
+  if (!identity) return null;
+  const row = smallBodyRows.get(identity.id);
+  return {
+    ...identity,
+    ...row,
+    world: [
+      positions[3 * hit.index],
+      positions[3 * hit.index + 1],
+      positions[3 * hit.index + 2],
+    ],
+  };
+}
+
+/**
  * A click names whatever is under it; a drag steers. The raycast threshold is
  * what a few pixels are worth at the depth of the object under the reticle, so
  * the pick is not easier at one scale than another.
@@ -660,6 +780,9 @@ function pickAt(clientX, clientY) {
 
   const relation = pickRelationAt(ndc);
   if (relation) return relation;
+
+  const smallBody = pickSmallBodyAt(ndc);
+  if (smallBody) return smallBody;
 
   const hits = raycaster.intersectObjects(atlas.layers, false).map((hit) => ({
     tileId: hit.object.userData?.tileId ?? null,
@@ -778,6 +901,9 @@ function dropStaleSelection() {
   // in the modelled tier is still drawn, and clearing it would mean the tier
   // could never be interrogated from a viewpoint with no stars in it.
   const isStarSelection = (candidate) => candidate
+    // A small body is always drawn -- its tier has no LOD to
+    // drop -- so its selection cannot go stale with the stars.
+    && candidate.kind !== 'small_body'
     && (candidate.kind === 'star' || candidate.pointIndex !== undefined);
   if (!isStarSelection(cardSelection) && selection === null) return;
   if (isStarSelection(cardSelection)) cardSelection = null;
@@ -845,7 +971,7 @@ function rebuildReticle() {
     tickCount: 16,
     crosshairSize: radius * 1.25,
     uncertainty: { semiMajor: radius * 0.42, semiMinor: radius * 0.16, rotationDeg: 24, segments: 32 },
-    label: selection.id ?? 'nearest star',
+    label: selection.name ?? selection.id ?? 'nearest star',
   });
   atlas.scene.add(reticle);
 }
@@ -1217,6 +1343,7 @@ function hudFlags() {
   const flags = {};
   if (atlas.layers.length > 0) flags.MEASURED = true;
   if (sparkLayers.length > 0) flags.MEASURED = true;
+  if (smallBodyLayers.length > 0) flags.MEASURED = true;
   if (dustLayers.length > 0) flags.UNRESOLVED = true;
   if (atlas.stats.lssVisible) flags.SIMULATED = true;
   return flags;
@@ -1227,6 +1354,7 @@ function hudSources() {
   for (const entry of tree?.tiles ?? []) sources.push(entry.id);
   if (relationPayload) sources.push('constellation figures');
   if (eventPayload) sources.push('ATNF pulsars');
+  if (smallBodyPayload) sources.push('JPL small bodies');
   return sources;
 }
 

@@ -21,8 +21,7 @@ the exact lie this project exists to avoid (PRD decision 1,
 | landmarks | Hipparcos via VizieR (`search/nearby.json`) | searched, flown to |
 | exoplanets | NASA Exoplanet Archive (`relations/exoplanets.json`) | facts on host cards |
 | pulsars | ATNF psrcat (spark markers) | rendered, picked |
-| binary stars | `relations/doubles.json` | ribbons on host cards |
-| small bodies | JPL SBDB (`ingest/sources/sbdb.py`) | **ingested, not shipped** — E19 |
+| small bodies | JPL SBDB (`ingest/sources/sbdb.py`) | rendered, picked, searched — E19 |
 | deep fields | Webb/Hubble imagery | backdrop planes |
 | large-scale structure | generated field | rendered, badged SIMULATED |
 

@@ -11,37 +11,11 @@ honesty](next-enhancements.md) · [E5 exoplanet relations](next-enhancements.md)
 auto-fly](next-enhancements.md) · [E7 figure stars](next-enhancements.md) · [E8 tier
 picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 event
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
-round-trip](next-enhancements.md) · [E13 relation picking](next-enhancements.md) · [E14 pulsar
 run](next-enhancements.md) · [E17 asset
-verification](next-enhancements.md) · [E18 re-measurement](next-enhancements.md)
-— 349 node tests.
+verification](next-enhancements.md) · [E18 re-measurement](next-enhancements.md) ·
+[E19 the solar system tier](next-enhancements.md)
+— 361 node tests.
 ---
-## E19 — The solar system tier that ships but does not render
-
-**Why now.** The PRD's v1 table marks T0 — solar system and small bodies — as in
-scope, and the ingest side is done: `ingest/sbdb.py` fetches real orbital
-elements, `bake_sbdb` writes an AU-quantized tile, the verifier re-runs an SBDB
-query, and `astro/orbits.py` places bodies at the catalog epoch. But no SBDB
-tile is in `assets/tiles/`, no layer in `web/src/` draws one, and the
-fact-card dispatcher refuses small bodies on the grounds that "we hold no such
-catalogue" — which stopped being true the day the ingest ran. A visitor can fly
-to 500 Mpc but cannot see Ceres.
-
-**Scope.** Bake the T0 slice (the phase-1 plan already measured 200 asteroids at
-6e-5 AU round-trip error), ship the tile, and render it as its own layer with
-its own provenance flag — a cited small body, not a star. The fact card learns a
-`small_body` kind: name, diameter, absolute magnitude, and the orbital epoch the
-position is valid for. Orbits as lines are optional; positions are not.
-
-**Invariant that matters.** A small body's position is an *epoch*, not a fact.
-The card must say when the elements were computed for, or the viewer is being
-shown a past Ceres as though it were tonight's.
-
-**Exit.** A small body renders at its SBDB position, its card names the spkid
-and the epoch, and the verifier's SBDB path covers the shipped tile.
-
----
-
 ## E20 — The 100,000-star criterion, measured or withdrawn
 
 **Why now.** The PRD's success criteria say "100 000+ real stars navigable at

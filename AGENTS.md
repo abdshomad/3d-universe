@@ -303,3 +303,22 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   the 0.01 ms tier cost stand as GPU-host measurements),
   `plans/phase-1.md` (exit criteria), `docs/prd/universe-3d.md`
   (success criteria). 349 node tests unchanged.
+- 2026-10-07 — `n` #37 (E19): the solar system tier ships. `ingest`
+  bakes the SBDB tile (500 bodies, AU-quantized — parsec
+  quantization would collapse the belt to one point) plus a
+  sidecar the fact card reads (names, diameters, H, and the
+  orbital epoch each position is valid for); `astro/orbits.py`
+  gains a Julian-date converter. The web side loads the tile
+  as its own layer (flat amber — bodies shine by reflected
+  sunlight, so no blackbody ramp), picks it in screen space,
+  and the search index merges the 500 bodies (a name or an
+  spkid — "ceres" or "20000001" both fly). The card learns a
+  `small_body` kind whose honesty row is the orbital epoch,
+  and solar-system light travel reads in minutes (Ceres: 23
+  min ago) instead of rounding to "0.0 yr". Proven live in a
+  headless browser: 500 rendered, a deep link restores Ceres
+  by id, a click picks a body, search flies, the card names
+  spkid sbdb:20000001 and epoch 2026-06-09. The verifier's
+  SBDB path covers the shipped tile (500/500 against live
+  SBDB) and the asset verifier covers the sidecar — 7/7
+  assets resolve. 361/361 node tests.

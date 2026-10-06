@@ -52,7 +52,10 @@ export function identityAt({ tile, index, originMetres = [0, 0, 0] }) {
   if (raw === undefined || raw === null) return null;
   const metres = Math.hypot(...positionAt(tile, index, originMetres));
   return {
-    kind: 'star',
+    // The tile's own unit names its tier: an AU tile is the
+    // solar-system tier, so a click on it is a small body,
+    // never a star wearing one.
+    kind: tile.header.unit === 'au' ? 'small_body' : 'star',
     id: raw.toString(),
     pointIndex: index,
     distancePc: metres / METRES_PER_PC,

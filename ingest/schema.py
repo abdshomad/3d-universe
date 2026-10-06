@@ -5,8 +5,7 @@ provenance record that survives all the way to the fact card.
 """
 
 from __future__ import annotations
-
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # Provenance flags. The renderer must be able to answer "measured or not?" in O(1).
@@ -52,6 +51,10 @@ class CatalogObject:
     mag: float | None
     color_index: float | None
     provenance: Provenance
+    # Source rows carry more than the normalized fields a tile can
+    # store: a small body's name, diameter and the epoch its
+    # position is valid for. Only the source that has them sets it.
+    extra: dict[str, Any] = field(default_factory=dict)
 
     def as_row(self) -> dict[str, Any]:
         row = asdict(self)

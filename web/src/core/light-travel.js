@@ -14,6 +14,8 @@
 
 /** One parsec is 3.26156 light years; the reciprocal converts distance to lookback. */
 export const LIGHT_YEARS_PER_PC = 3.2615637769;
+/** A minute of light travel, in years: solar-system bodies are minutes away. */
+const MINUTES_PER_YEAR = 525960;
 
 /** Years between now and seeing light that has travelled `distancePc`. */
 export function lookbackYears(distancePc) {
@@ -44,6 +46,12 @@ export function epochSpan(distancesPc, observerYear) {
 export function formatLookback(years) {
   if (years === null || years === undefined || !Number.isFinite(years)) return '—';
   const magnitude = Math.abs(years);
+  if (magnitude < 1e-3) {
+    // Ceres' light is ~22 minutes old; rounding that to "0.0 yr ago"
+    // would hide the only lookback a solar-system body has.
+    const minutes = Math.max(1, Math.round(magnitude * MINUTES_PER_YEAR));
+    return `${minutes} min ${years >= 0 ? 'ago' : 'from now'}`;
+  }
   if (magnitude < 1000) {
     const rounded = magnitude < 10 ? magnitude.toFixed(1) : Math.round(magnitude).toString();
     return `${rounded} yr ${years >= 0 ? 'ago' : 'from now'}`;
