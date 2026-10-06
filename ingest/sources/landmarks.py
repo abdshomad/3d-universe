@@ -10,19 +10,27 @@ from memory. That rule is the whole point of this file.
 
 from __future__ import annotations
 
+import csv
 import json
+import urllib.parse
+import urllib.request
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from ingest.http import fetch_text, now_iso
+from ingest.http import now_iso
 
-VIZIER_URL = "https://vizier.cds.unistra.fr/viz-bin/asu-tsv"
+TAP_URL = "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
 SOURCE = "I/239/hip_main"
-COLUMNS = "HIP,RAICRS,DEICRS,Plx,Vmag,B-V,_RA.icrs,_DE.icrs"
+# `_RA.icrs` and `_DE.icrs` are VizieR's J2000 ICRS columns and
+# must be quoted: bare, the ADQL parser reads the dots as table
+# qualifiers. `B-V` must be quoted too, but only because an
+# unquoted hyphen next to a quoted dotted column is rejected.
+COLUMNS = 'HIP,RAICRS,DEICRS,Plx,Vmag,"B-V","_RA.icrs","_DE.icrs"'
 
 CITATION = {
     "dataset": "Hipparcos catalogue, VizieR I/239/hip_main",
-    "url": f"{VIZIER_URL}?source={SOURCE}",
+    "url": "https://cdsarc.cds.unistra.fr/viz-bin/cat/I/239",
     "retrieved": now_iso(),
     "licence": "See CDS VizieR terms",
 }
@@ -41,20 +49,33 @@ class UnverifiedLandmarkError(RuntimeError):
 
 
 def fetch_hipparcos() -> str:
-    """The whole Hipparcos table, as TSV text."""
-    url = f"{VIZIER_URL}?source={SOURCE}&out.max=200000&out={COLUMNS}"
-    return fetch_text(url, timeout=180)
+    """The whole Hipparcos table, as CSV text.
+
+    Fetched from VizieR's TAP service, the same route
+    `ingest.sources.hipparcos` and `ingest.verify_events`
+    use. The asu-tsv endpoint this module used until
+    2026-10-06 stopped answering -- every query, even for
+    other catalogues, came back "No catalogue or table was
+    specified or found" -- so the table moved here rather
+    than being left unbuildable.
+    """
+    adql = f'SELECT {COLUMNS} FROM "{SOURCE}"'
+    url = f"{TAP_URL}?{urllib.parse.urlencode({'REQUEST': 'doQuery', 'LANG': 'ADQL', 'FORMAT': 'csv', 'QUERY': adql})}"
+    with urllib.request.urlopen(url, timeout=240) as response:
+        return response.read().decode("utf-8")
 
 
 def parse_hipparcos(text: str) -> dict[int, dict[str, Any]]:
-    lines = [line.rstrip("\n") for line in text.splitlines() if not line.startswith("#")]
-    rule = next(index for index, line in enumerate(lines) if line.startswith("---"))
-    header = next(line for line in lines[:rule] if line.strip()).split("\t")
+    """Hipparcos rows by HIP number, as the TAP CSV served them."""
     rows: dict[int, dict[str, Any]] = {}
-    for line in lines[rule + 1 :]:
-        if line.strip():
-            row = dict(zip(header, line.split("\t")))
-            rows[int(row["HIP"])] = row
+    for row in csv.DictReader(StringIO(text)):
+        hip = row.get("HIP")
+        if not hip:
+            continue
+        try:
+            rows[int(hip)] = row
+        except ValueError:
+            continue
     return rows
 
 
@@ -68,8 +89,8 @@ def landmark_from_row(hip: int, row: dict[str, Any], name: str, kind: str, cross
         "hip": hip,
         "name": name,
         "kind": kind,
-        "ra_deg": round(float(row["_RA.icrs"]), 6),
-        "dec_deg": round(float(row["_DE.icrs"]), 6),
+        "ra_deg": round(float(row["_RA_icrs"]), 6),
+        "dec_deg": round(float(row["_DE_icrs"]), 6),
         "parallax_mas": parallax,
         "parallax_error_mas": _number(row.get("e_Plx")),
         "distance_pc": round(distance_pc, 4),

@@ -13,37 +13,7 @@ picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 ev
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
 round-trip](next-enhancements.md) · [E13 relation picking](next-enhancements.md) · [E14 pulsar
 verification](next-enhancements.md) · [E15 journey captions](next-enhancements.md) · [E16 first
-run](next-enhancements.md) — 349 node tests.
----
-
-## E17 — The five catalogues that ship unverified
-
-**Why now.** Nine data assets ship. Four have a verifier — the manifest, the baked tiles, and now the
-events. **Five do not**:
-
-| asset | what depends on it |
-|---|---|
-| `landmarks/landmarks.json` | search, journey routing, the guided flight |
-| `search/nearby.json` | typing a name and being taken there |
-| `relations/constellations.json` | every figure drawn on screen |
-| `relations/figure-stars.json` | the endpoints those figures resolve to |
-| `relations/exoplanets.json` | 1,440 planets on 3,080 star cards |
-
-The event catalogue had exactly this gap and paid for itself immediately: 598 of 598 resolved, and the
-check found that 559 of the distances were dispersion-measure estimates nobody had noticed. **Five more
-assets are carrying the same unexamined assumption**, and one of them — the landmark set — decides where
-a search takes you.
-
-**Scope.** Extend the pattern rather than inventing a new one: for each asset, resolve every row back to
-the catalogue it claims, and report what does not. Where a source is unreachable from this host, say so
-with the receipt rather than skipping the check — the point is to know, not to pass.
-
-**Invariant that matters.** An asset that cannot be verified against its source must say that in the
-file. A catalogue that cannot be checked is not the same thing as one that has been checked and passed.
-
-**Exit.** Every shipped asset either verifies against its source or records why it cannot, and the
-count of unresolved rows is a number someone has looked at.
-
+run](next-enhancements.md) · [E17 asset verification](next-enhancements.md) — 349 node tests.
 ---
 
 ## E18 — Re-measure, or stop claiming
