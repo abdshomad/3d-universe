@@ -185,3 +185,14 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   CosmoDC2 is unreachable from this host. That overturns a locked PRD decision: the 500 Mpc tier is
   generated and badged SIMULATED, not ingested survey galaxies badged SURVEY/STATISTICAL. The
   sub-plan and the research doc now say so, and the stale 'DESI galaxies are measured' note is gone.
+- 2026-10-06 — fix: the demo domain answered `not found` at `/`. `serve.js` serves the
+  repo root and the atlas lives at `/web/index.html`, so `/` had no index; it now 302s
+  there. The redirect must stay a redirect - the import map is relative to `/web`, so
+  serving the file at `/` would break `./src/main.js`. One outage along the way: pm2
+  runs scripts through `ProcessContainerFork.js`, so an
+  `import.meta.url === pathToFileURL(process.argv[1])` main-guard never fires under pm2
+  and silently took the site down; the entrypoint listens unconditionally again,
+  `process.env` now overrides `.env`, and the tests spawn the real server on an
+  ephemeral port (in-process listeners keep `node --test`'s event loop alive and hang
+  the run). 4 serve tests; 333/333 pass; verified live through the tunnel: `/` → 302
+  → `/web/index.html` → 200.
