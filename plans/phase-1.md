@@ -32,8 +32,11 @@ The synthesis policy lives in 03 and the 500 Mpc tier in 05; reversing either le
 
 ## Exit criteria for Phase 1
 
-- Fly from Earth orbit to 100 kpc continuously, 60 fps, no stall.
+- Fly from Earth orbit to 100 kpc continuously, 60 fps, no stall. 60 fps is the GPU-host
+  criterion: re-measured 2026-10-07 under SwiftShader (`docs/perf/remeasure.json`), the route's
+  near segment runs 3.3 fps median with no stall (worst frame 1.1 s), and the software renderer
+  drops to ~0.3 fps beyond ~30 kpc — the far-field scene, not the route logic, is the limit.
 - Every rendered measured object resolves to a catalog row via the manifest.
-- Cold start to local-neighborhood tier under 5 s.
+- Cold start to local-neighborhood tier under 5 s. Re-measured 2026-10-07: 0.5 s.
 - HUD honours the anti-goals in the art direction (no chrome over ~8 % of frame).
 - The 500 Mpc tier renders as statistical structure, never as individually identifiable galaxies.

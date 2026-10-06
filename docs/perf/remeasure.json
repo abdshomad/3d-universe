@@ -1,0 +1,78 @@
+{
+  "url": "http://0.0.0.0:4038/web/index.html",
+  "measured": "2026-10-06T19:58:30Z",
+  "machine": {
+    "host": "aiserver",
+    "platform": "Linux-5.15.0-198-generic-x86_64-with-glibc2.35",
+    "backend": "webgl2",
+    "profile": "software (SwiftShader)",
+    "viewport": "1280x800",
+    "budget": {
+      "label": "SwiftShader or any software rasteriser",
+      "budgetFrameSeconds": 0.25,
+      "stallSeconds": 2.0
+    }
+  },
+  "coldStartSeconds": 0.5,
+  "route": {
+    "windowSeconds": 25.0,
+    "count": 66,
+    "medianSeconds": 0.3,
+    "p95Seconds": 1.0500499999999993,
+    "p99Seconds": 1.1116549999999996,
+    "worstSeconds": 1.1332999999999993,
+    "fpsFromMedian": 3.3333333333333335,
+    "overBudget": 41,
+    "stalls": 0
+  },
+  "tierCost": {
+    "parkedAtMpc": 5,
+    "windowSeconds": 20.0,
+    "controlAtAU": {
+      "count": 93,
+      "medianSeconds": 0.21660000000000038,
+      "p95Seconds": 0.2400400000000002,
+      "p99Seconds": 0.2633280000000001,
+      "worstSeconds": 0.4165999999999999,
+      "fpsFromMedian": 4.616805170821784,
+      "overBudget": 2,
+      "stalls": 0
+    },
+    "withTier": {
+      "count": 0,
+      "medianSeconds": null,
+      "p95Seconds": null,
+      "p99Seconds": null,
+      "worstSeconds": null,
+      "fpsFromMedian": null,
+      "overBudget": 0,
+      "stalls": 0
+    },
+    "withoutTier": {
+      "count": 1,
+      "medianSeconds": 32.9986,
+      "p95Seconds": 32.9986,
+      "p99Seconds": 32.9986,
+      "worstSeconds": 32.9986,
+      "fpsFromMedian": 0.030304315940676268,
+      "overBudget": 1,
+      "stalls": 1
+    },
+    "costSeconds": null,
+    "costPercent": null,
+    "valid": false,
+    "reason": "the software renderer sustained 93 frames at 1 AU but only 0 and 1 frames in 20.0 s windows parked in the tier's visibility band (5 Mpc): the far-field scene beyond about 1 Mpc takes seconds per frame under SwiftShader, so the tier's per-frame cost is not measurable on this machine"
+  },
+  "parseCost": {
+    "bytes": 884736,
+    "fetchMs": 797.4,
+    "parseMs": 0.1,
+    "buildMs": 22,
+    "cells": 884736,
+    "points": [
+      49410,
+      6163
+    ]
+  },
+  "pageErrors": []
+}

@@ -53,9 +53,15 @@ tier says exactly that: it is a model of large-scale structure, not a survey map
   reports the level actually drawn.
 - [x] Frame-budget check — measured, not assumed. The star zone and the tier **never overlap**:
   stars count 72,219 at 10 pc and 6,918 at 10 kpc, but **0** from 0.5 Mpc out, while the tier only
-  fades in past 1 Mpc. So the tier cannot push the star zone below budget — measured 60.0 fps with
-  it drawn and 60.0 fps with it hidden, a 0.01 ms difference. Cold cost is 0.1 ms to parse 884,736
-  bytes and 25.8 ms to build both levels. `web/src/core/tier-budget.js` holds the line at runtime:
+  fades in past 1 Mpc. So the tier cannot push the star zone below budget. The 60.0 fps A/B (tier
+  drawn vs hidden, a 0.01 ms difference) was measured 2026-10-04/05 on the GPU host; it is not
+  reproducible under software rendering — re-measured 2026-10-07 (`scripts/remeasure.py`, output in
+  `docs/perf/remeasure.json`): the software renderer held 93 frames in 20 s parked at 1 AU, but 0
+  and 1 frames in the same windows parked at 5 Mpc, the tier's visibility band. The far-field scene
+  beyond ~1 Mpc takes seconds per frame under SwiftShader, so the tier's per-frame cost is **not
+  measurable on this machine** and the 0.01 ms figure stands as a GPU-host measurement. Cold cost
+  re-measured the same run: 0.1 ms to parse 884,736 bytes (the recorded 0.1 ms, exact) and 22 ms
+  to build both levels (recorded 25.8 ms). `web/src/core/tier-budget.js` holds the line at runtime:
   a rolling mean over 60 frames, warmup ignored, deferring the tier when the mean exceeds the budget
   and restoring it when there is headroom. Verified live — tightening the budget to 8 ms hides the
   tier and drops the badge to `UNRESOLVED`; restoring 20 ms brings both back.

@@ -92,9 +92,12 @@ Hard constraints that follow from research:
 
 ## Success criteria
 
-- 100 000+ real stars navigable at 60 fps on a mid-range laptop GPU.
+- 100 000+ real stars navigable at 60 fps on a mid-range laptop GPU. The 60 fps is a GPU
+  criterion; under software rendering (SwiftShader, re-measured 2026-10-07) the same route runs
+  3.3 fps median, and the tier's visibility band is beyond what a software rasteriser renders at
+  any usable rate. The star-count ceiling is a data question (E20).
 - Every star on screen resolves to a catalog row; every synthetic object is marked.
-- A cold start loads the local-neighborhood tier in under 5 s.
+- A cold start loads the local-neighborhood tier in under 5 s. Re-measured 2026-10-07: 0.5 s.
 - A user can fly from the Sun to 100 kpc in under 60 s without a loading stall.
 - The atlas reaches ~500 Mpc: real measured stars near home, statistical large-scale structure
   beyond, simulated fill everywhere measurement ends and always visibly badged.

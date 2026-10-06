@@ -12,35 +12,10 @@ auto-fly](next-enhancements.md) · [E7 figure stars](next-enhancements.md) · [E
 picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 event
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
 round-trip](next-enhancements.md) · [E13 relation picking](next-enhancements.md) · [E14 pulsar
-verification](next-enhancements.md) · [E15 journey captions](next-enhancements.md) · [E16 first
-run](next-enhancements.md) · [E17 asset verification](next-enhancements.md) — 349 node tests.
+run](next-enhancements.md) · [E17 asset
+verification](next-enhancements.md) · [E18 re-measurement](next-enhancements.md)
+— 349 node tests.
 ---
-
-## E18 — Re-measure, or stop claiming
-
-**Why now.** Every performance figure recorded in the plans was measured before this host's disk filled.
-The atlas currently renders at **4.3 fps** here, where it measured **60 fps** when healthy. So the
-recorded claims — *60 fps with the tier drawn and 60 with it hidden, a 0.01 ms difference*, *0.1 ms to
-parse 884,736 bytes*, *cold start to the local tier under 5 s* — cannot be reproduced on this machine
-today, and nothing in the repository would notice if they had quietly become false.
-
-That is the one kind of claim in this project that no test guards: the test suite proves the code
-behaves, not that it is fast.
-
-**Scope.** Make the numbers checkable rather than remembered. One command that reports frame rate,
-tier cost, parse cost and cold start, writing its output somewhere a person reads it. Then re-measure,
-and correct the plans wherever the machine's answer differs from what is written — including if the
-answer is "this is slower than we said".
-
-**Invariant that matters.** A recorded number carries the machine and the conditions it was measured on.
-"60 fps" without them is a story, and this project's whole argument is that a story is not a
-measurement.
-
-**Exit.** One command reports the current numbers, the plans carry figures that match it, and any
-figure that cannot be re-measured says so where it is stated.
-
----
-
 ## E19 — The solar system tier that ships but does not render
 
 **Why now.** The PRD's v1 table marks T0 — solar system and small bodies — as in

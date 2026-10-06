@@ -276,3 +276,30 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   plan's exoplanet row was stale (1,440 planets on 3,080 cards — the asset
   holds 2,345 planets on 1,652 systems) and missed `binaries.json` as the
   sixth asset; both corrected.
+- 2026-10-07 — `n` #36 (E18): re-measure, or stop claiming —
+  `scripts/remeasure.py` (+ `scripts/remeasure_probe.py`) reports
+  frame rate, tier cost, parse cost and cold start, each with the
+  machine and the conditions it was measured under, to
+  `docs/perf/remeasure.json`. Live run on this host (SwiftShader,
+  WebGL2, 1280×800): cold start 0.5 s (criterion <5 s — met);
+  route 3.3 fps median, worst frame 1.1 s, 0 stalls (60 fps is the
+  GPU-host criterion; the software budget of 4 fps is met at the
+  median, missed at p95); parse 0.1 ms and build 22 ms for
+  884,736 bytes (recorded 0.1/25.8 ms — parse exact, build within
+  15 %); tier cost **not measurable on this machine**: the software
+  renderer held 93 frames in 20 s parked at 1 AU but 0 and 1
+  frames in the same windows parked at 5 Mpc, the tier's
+  visibility band. The diagnosis, with evidence: the far-field
+  scene beyond ~1 Mpc takes seconds per frame under SwiftShader — a
+  parked page's rAF chain stops ~0.75 s in (the app's loop and an
+  independent counter die at the same millisecond; no exception, no
+  crash, no reload; timers and visibilityState fine), the GPU
+  process saturates (~4.6 cores), 1 AU and 326 pc render fine (26
+  and 40 frames/6 s) while 32.6 kpc and 100 kpc collapse (2
+  frames/6 s); 3.2 pc is slow for a different reason (72,219 stars
+  drawn, 5 frames/6 s). All three recorded claims corrected with
+  the re-measured numbers, their conditions and a pointer to the
+  JSON: `plans/phase-1/05-large-scale.md` (the 60.0 fps A/B and
+  the 0.01 ms tier cost stand as GPU-host measurements),
+  `plans/phase-1.md` (exit criteria), `docs/prd/universe-3d.md`
+  (success criteria). 349 node tests unchanged.
