@@ -30,12 +30,12 @@ import { planesFromCamera } from './core/frustum.js';
 import { decodeAllPositions, readTile } from './data/tile-reader.js';
 import { createStarLayer } from './render/star-layer.js';
 import { AtlasScene } from './render/scene.js';
+import { anglesFromDirection, directionFromAngles } from './core/view.js';
+import { createNebulosity } from './render/nebulosity.js';
 import { cinematicStepsFromRoute } from './routes/cinematic-path.js';
 import { createScaleOutPath } from './routes/scale-out.js';
 import { DEEP_FIELDS } from './data/deep-fields.js';
 import { Backdrop } from './render/backdrop.js';
-import { anglesFromDirection, directionFromAngles } from './core/view.js';
-import { createNebulosity } from './render/nebulosity.js';
 import { createStarDust } from './render/star-dust.js';
 import {
   MPC_METRES,
@@ -48,6 +48,11 @@ import { StarIndex, buildRelationRibbons } from './render/relation-layer.js';
 import { createReticle, worldWidthForPixels } from './render/reticles.js';
 import { createSparkLayers } from './render/sparks.js';
 import { createAdditivePoints } from './render/point-layer.js';
+import { createAuLayer } from './render/au-layer.js';
+import { createGalaxyLayer } from './render/galaxy-layer.js';
+import { createBlackHoleMarkers, updateBlackHoleMarkers } from './render/marker-layer.js';
+import { OptionalTiers } from './core/optional-tiers.js';
+import { pickTiledPoints, pickMarkersAt } from './core/point-pick.js';
 import { METRES_PER_PC, metresToPc } from './core/units.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
@@ -113,6 +118,11 @@ const DOUBLE_DIR = '../assets/relations/binaries.json';
 const EXOPLANET_DIR = '../assets/relations/exoplanets.json';
 const EVENT_DIR = '../assets/events/pulsars.json';
 const SMALL_BODY_DIR = '../assets/tiles/sbdb-small-bodies.json';
+const COMETS_DIR = '../assets/tiles/sbdb-comets.json';
+const PLANETS_DIR = '../assets/tiles/horizons-planets.json';
+const SATELLITES_DIR = '../assets/tiles/horizons-satellites.json';
+const GALAXIES_DIR = '../assets/tiles/galaxies-rc3.json';
+const BLACK_HOLES_DIR = '../assets/tiles/black-holes.json';
 const LANDMARK_DIR = '../assets/landmarks/landmarks.json';
 const SEARCH_DIR = '../assets/search/nearby.json';
 let eventPayload = null;
@@ -122,8 +132,35 @@ let sparkLayers = [];
 // drawn as its own layer so a small body is never a star.
 let smallBodyTile = null;
 let smallBodyPayload = null;
+let cometsPayload = null;
+let planetsPayload = null;
+let satellitesPayload = null;
+let galaxiesPayload = null;
+let blackHolesPayload = null;
 const smallBodyRows = new Map();
 let smallBodyLayers = [];
+// The celestial-body tiers. Comets, planets and satellites
+// share the AU primitive with small bodies; galaxies are a
+// far point field; black holes are ring markers. Each layer
+// answers "measured?" from its own tile's provenance, in
+// O(1), and each optional tier is registered with the frame
+// budget so the budget can shed it.
+let cometsTile = null;
+let planetsTile = null;
+let satellitesTile = null;
+let galaxiesTile = null;
+let blackHolesTile = null;
+const cometsRows = new Map();
+const planetsRows = new Map();
+const satellitesRows = new Map();
+const galaxiesRows = new Map();
+const blackHolesRows = new Map();
+let cometsLayers = [];
+let planetsLayers = [];
+let satellitesLayers = [];
+let galaxiesLayers = [];
+let blackHoleMarkers = [];
+const optionalTiers = new OptionalTiers();
 const budget = new FrameBudgetController({ maxPoints: 120000, minPoints: 3000, window: 20 });
 const route = createScaleOutPath();
 let journeyRoute = null;
@@ -274,10 +311,30 @@ async function start() {
       smallBodyTile = await loadTile(`${TILE_DIR}/${entry.file}`);
       continue;
     }
-    // Sub-plan 03 wires the per-kind layers -- planets,
-    // satellites, comets, galaxies, black holes. Until then
-    // the renderer does not draw them: a dataset without its
-    // primitive is not drawn as something it is not.
+    // Every other kind is its own tier: not star LOD
+    // material, each with its own primitive. A kind the
+    // renderer has no layer for would not load -- but
+    // sub-plan 03 gave each of these its layer.
+    if (kind === 'comet') {
+      cometsTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
+    if (kind === 'planet') {
+      planetsTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
+    if (kind === 'satellite') {
+      satellitesTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
+    if (kind === 'galaxy') {
+      galaxiesTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
+    if (kind === 'black_hole') {
+      blackHolesTile = await loadTile(`${TILE_DIR}/${entry.file}`);
+      continue;
+    }
   }
   const landmarkPayload = await loadJson(LANDMARK_DIR).catch(() => null);
   if (landmarkPayload?.landmarks?.length) {
@@ -309,6 +366,28 @@ async function start() {
     for (const body of smallBodyPayload.bodies) {
       smallBodyRows.set(String(body.spkid), body);
     }
+  }
+  // The celestial-body sidecars: the rows a card reads,
+  // keyed by the id the tile's id array holds.
+  cometsPayload = await loadJson(COMETS_DIR).catch(() => null);
+  if (cometsPayload?.bodies?.length) {
+    for (const body of cometsPayload.bodies) cometsRows.set(String(body.spkid), body);
+  }
+  planetsPayload = await loadJson(PLANETS_DIR).catch(() => null);
+  if (planetsPayload?.bodies?.length) {
+    for (const body of planetsPayload.bodies) planetsRows.set(String(body.code), body);
+  }
+  satellitesPayload = await loadJson(SATELLITES_DIR).catch(() => null);
+  if (satellitesPayload?.bodies?.length) {
+    for (const body of satellitesPayload.bodies) satellitesRows.set(String(body.code), body);
+  }
+  galaxiesPayload = await loadJson(GALAXIES_DIR).catch(() => null);
+  if (galaxiesPayload?.galaxies?.length) {
+    for (const galaxy of galaxiesPayload.galaxies) galaxiesRows.set(String(galaxy.pgc), galaxy);
+  }
+  blackHolesPayload = await loadJson(BLACK_HOLES_DIR).catch(() => null);
+  if (blackHolesPayload?.black_holes?.length) {
+    for (const hole of blackHolesPayload.black_holes) blackHolesRows.set(String(hole.recno), hole);
   }
 
   const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
@@ -394,6 +473,16 @@ async function start() {
     atlas.measure(now);
     if (budget.sample(delta).changed) redraw();
     updateLssVisibility();
+    // Optional tiers defer with the same verdict the modelled
+    // field reads: an optional tier must never be the reason
+    // a frame is late.
+    optionalTiers.applyBudget(frameBudget.deferred);
+    // Markers are annotations: they face the camera and hold
+    // their angular size at any distance.
+    updateBlackHoleMarkers(blackHoleMarkers, atlas.camera, {
+      fovDegrees: atlas.camera.fov,
+      viewportHeight: canvas.clientHeight || 800,
+    });
     updateHud();
     epochReadout();
     hintReadout();
@@ -630,6 +719,11 @@ function rebuildMediums(scale) {
   rebuildReticle();
   rebuildSparks(scale);
   rebuildSmallBodies();
+  rebuildComets();
+  rebuildPlanets();
+  rebuildSatellites();
+  rebuildGalaxies();
+  rebuildBlackHoles();
 }
 
 /** Event markers. An event is only placed when the catalogue gives a distance:
@@ -683,86 +777,117 @@ function rebuildSparks() {
  * measured tier carries it.
  */
 function rebuildSmallBodies() {
-  for (const layer of smallBodyLayers) {
+  disposeLayers(smallBodyLayers);
+  smallBodyLayers = auTierLayers(smallBodyTile, 'small_body');
+  for (const layer of smallBodyLayers) atlas.scene.add(layer);
+  if (smallBodyTile) atlas.stats.smallBodies = smallBodyTile.count;
+}
+
+/** Comets: the same AU primitive, their own kind and colour. */
+function rebuildComets() {
+  disposeLayers(cometsLayers);
+  cometsLayers = auTierLayers(cometsTile, 'comet');
+  for (const layer of cometsLayers) atlas.scene.add(layer);
+  if (cometsTile) atlas.stats.comets = cometsTile.count;
+}
+
+function rebuildPlanets() {
+  disposeLayers(planetsLayers);
+  planetsLayers = auTierLayers(planetsTile, 'planet');
+  for (const layer of planetsLayers) atlas.scene.add(layer);
+  if (planetsTile) atlas.stats.majorPlanets = planetsTile.count;
+}
+
+function rebuildSatellites() {
+  disposeLayers(satellitesLayers);
+  satellitesLayers = auTierLayers(satellitesTile, 'satellite');
+  for (const layer of satellitesLayers) atlas.scene.add(layer);
+  if (satellitesTile) atlas.stats.satellites = satellitesTile.count;
+}
+
+/** One AU-tier layer, decoded at the current origin. */
+function auTierLayers(tile, kind) {
+  if (!tile) return [];
+  return [createAuLayer({
+    positions: decodeAllPositions(tile, atlas.origin.originMetres),
+    tile,
+    kind,
+  })];
+}
+/** Remove a layer and its GPU resources. */
+function disposeLayers(layers) {
+  for (const layer of layers) {
     atlas.scene.remove(layer);
     layer.geometry.dispose();
     layer.material.dispose();
   }
-  smallBodyLayers = [];
-  if (!smallBodyTile) return;
+}
 
-  // Positions are render-space metres at the current origin,
-  // like every other layer rebuilt with the medium.
-  const positions = new Float32Array(
-    decodeAllPositions(smallBodyTile, atlas.origin.originMetres),
-  );
-  const count = smallBodyTile.count;
-  const colours = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  for (let index = 0; index < count; index += 1) {
-    colours[3 * index] = 1.0;
-    colours[3 * index + 1] = 0.69;
-    colours[3 * index + 2] = 0.12;
-    // Size follows the apparent magnitude the tile carries:
-    // a rendering choice keyed to a measured brightness,
-    // not an invented angular diameter.
-    const apparent = smallBodyTile.mag ? smallBodyTile.mag[index] / 1000 : 12;
-    sizes[index] = Math.max(2, Math.min(8, 10 - 0.6 * apparent));
+/**
+ * The galaxy field: one point per catalogue row, far beyond
+ * the solar system. An optional tier — the frame budget can
+ * shed it — so it is registered with the budget, and
+ * re-registered on every rebuild.
+ */
+function rebuildGalaxies() {
+  for (const layer of galaxiesLayers) optionalTiers.unregister(layer);
+  disposeLayers(galaxiesLayers);
+  galaxiesLayers = galaxiesTile ? [createGalaxyLayer({
+    positions: decodeAllPositions(galaxiesTile, atlas.origin.originMetres),
+    tile: galaxiesTile,
+  })] : [];
+  for (const layer of galaxiesLayers) {
+    optionalTiers.register(layer);
+    atlas.scene.add(layer);
   }
-  const layer = createAdditivePoints({
-    positions,
-    colours,
-    sizes,
-    name: 'small-bodies',
-  });
-  layer.userData.tileId = smallBodyTile.header.tile_id;
-  smallBodyLayers = [layer];
-  atlas.scene.add(layer);
-  atlas.stats.smallBodies = count;
+  if (galaxiesTile) atlas.stats.galaxies = galaxiesTile.count;
+}
+
+/**
+ * Black-hole markers: rings, not points. A black hole is not
+ * a light source, and the ring says so. Optional, like the
+ * galaxy field, and rebuilt with the medium because the
+ * origin moves.
+ */
+function rebuildBlackHoles() {
+  for (const marker of blackHoleMarkers) {
+    optionalTiers.unregister(marker);
+    atlas.scene.remove(marker);
+    marker.geometry.dispose();
+    marker.material.dispose();
+  }
+  blackHoleMarkers = blackHolesTile ? createBlackHoleMarkers({
+    tile: blackHolesTile,
+    positions: decodeAllPositions(blackHolesTile, atlas.origin.originMetres),
+    rows: blackHolesRows,
+    citation: blackHolesTile.header.provenance,
+  }) : [];
+  for (const marker of blackHoleMarkers) {
+    optionalTiers.register(marker);
+    atlas.scene.add(marker);
+  }
+  atlas.stats.blackHoles = blackHoleMarkers.length;
 }
 
 /**
  * Small bodies are picked in screen space, like the modelled
  * cells: they are points a few pixels wide, and a depth-scaled
  * raycast threshold would make them unclickable at 3 AU.
+ * The same path picks every tiled tier, so a click, a search
+ * and a deep link all resolve through one function.
  */
 function pickSmallBodyAt(ndc) {
   if (smallBodyLayers.length === 0 || !smallBodyTile) return null;
   const rect = canvas.getBoundingClientRect();
-  const layer = smallBodyLayers[0];
-  const positions = layer.geometry.attributes.position.array;
-  const count = positions.length / 3;
-  const projected = new Float64Array(count * 3);
-  const vertex = new Vector3();
-  for (let i = 0; i < count; i += 1) {
-    vertex.set(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
-      .project(atlas.camera);
-    projected[3 * i] = vertex.x;
-    projected[3 * i + 1] = vertex.y;
-    projected[3 * i + 2] = vertex.z;
-  }
-  const hit = nearestCellOnScreen(projected, ndc, {
+  return pickTiledPoints(ndc, {
+    layer: smallBodyLayers[0],
+    tile: smallBodyTile,
+    rows: smallBodyRows,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
     width: rect.width,
     height: rect.height,
-    maxPixels: 12,
   });
-  if (!hit) return null;
-  const identity = identityAt({
-    tile: smallBodyTile,
-    index: hit.index,
-    originMetres: atlas.origin.originMetres,
-  });
-  if (!identity) return null;
-  const row = smallBodyRows.get(identity.id);
-  return {
-    ...identity,
-    ...row,
-    world: [
-      positions[3 * hit.index],
-      positions[3 * hit.index + 1],
-      positions[3 * hit.index + 2],
-    ],
-  };
 }
 
 /**
@@ -793,8 +918,66 @@ function pickAt(clientX, clientY) {
   const relation = pickRelationAt(ndc);
   if (relation) return relation;
 
+  // Ring markers are annotations drawn on top of everything,
+  // so they pick before the content behind them.
+  const blackHole = pickMarkersAt(ndc, {
+    markers: blackHoleMarkers,
+    tile: blackHolesTile,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (blackHole) return blackHole;
+
   const smallBody = pickSmallBodyAt(ndc);
   if (smallBody) return smallBody;
+
+  // The remaining tiled tiers, in kind order: a comet is
+  // not a planet, and a click must say which.
+  const comet = pickTiledPoints(ndc, {
+    layer: cometsLayers[0],
+    tile: cometsTile,
+    rows: cometsRows,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (comet) return comet;
+
+  const planet = pickTiledPoints(ndc, {
+    layer: planetsLayers[0],
+    tile: planetsTile,
+    rows: planetsRows,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (planet) return planet;
+
+  const satellite = pickTiledPoints(ndc, {
+    layer: satellitesLayers[0],
+    tile: satellitesTile,
+    rows: satellitesRows,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (satellite) return satellite;
+
+  const galaxy = pickTiledPoints(ndc, {
+    layer: galaxiesLayers[0],
+    tile: galaxiesTile,
+    rows: galaxiesRows,
+    camera: atlas.camera,
+    originMetres: atlas.origin.originMetres,
+    width: rect.width,
+    height: rect.height,
+  });
+  if (galaxy) return galaxy;
 
   const hits = raycaster.intersectObjects(atlas.layers, false).map((hit) => ({
     tileId: hit.object.userData?.tileId ?? null,
@@ -909,14 +1092,15 @@ function pickCellAt(ndc) {
  */
 function dropStaleSelection() {
   if (atlas.stats.points > 0) return;
-  // Only star selections go stale when the star set is dropped. A picked cell
-  // in the modelled tier is still drawn, and clearing it would mean the tier
-  // could never be interrogated from a viewpoint with no stars in it.
-  const isStarSelection = (candidate) => candidate
-    // A small body is always drawn -- its tier has no LOD to
-    // drop -- so its selection cannot go stale with the stars.
-    && candidate.kind !== 'small_body'
-    && (candidate.kind === 'star' || candidate.pointIndex !== undefined);
+  // Only star selections go stale when the star set is
+  // dropped. Every other kind's tier is always drawn in
+  // full -- a small body, a comet, a planet, a satellite,
+  // a galaxy, a black-hole marker -- so its selection
+  // cannot go stale with the stars, and a picked cell in
+  // the modelled tier is still drawn; clearing any of
+  // those would mean the tier could never be interrogated
+  // from a viewpoint with no stars in it.
+  const isStarSelection = (candidate) => candidate?.kind === 'star';
   if (!isStarSelection(cardSelection) && selection === null) return;
   if (isStarSelection(cardSelection)) cardSelection = null;
   selection = null;
@@ -1356,6 +1540,16 @@ function hudFlags() {
   if (atlas.layers.length > 0) flags.MEASURED = true;
   if (sparkLayers.length > 0) flags.MEASURED = true;
   if (smallBodyLayers.length > 0) flags.MEASURED = true;
+  // The celestial-body tiers are measured content: each
+  // layer answers for itself, from the flag its tile's
+  // provenance baked into it. An optional tier the
+  // frame budget shed is not on screen, so it does
+  // not answer.
+  for (const layers of [cometsLayers, planetsLayers, satellitesLayers]) {
+    if (layers.some((layer) => layer.visible)) flags.MEASURED = true;
+  }
+  if (galaxiesLayers.some((layer) => layer.visible)) flags.MEASURED = true;
+  if (blackHoleMarkers.some((marker) => marker.visible)) flags.MEASURED = true;
   if (dustLayers.length > 0) flags.UNRESOLVED = true;
   if (atlas.stats.lssVisible) flags.SIMULATED = true;
   return flags;
@@ -1367,6 +1561,11 @@ function hudSources() {
   if (relationPayload) sources.push('constellation figures');
   if (eventPayload) sources.push('ATNF pulsars');
   if (smallBodyPayload) sources.push('JPL small bodies');
+  if (cometsPayload) sources.push('JPL comets');
+  if (planetsPayload) sources.push('JPL planets');
+  if (satellitesPayload) sources.push('JPL satellites');
+  if (galaxiesPayload) sources.push('RC3 galaxies');
+  if (blackHolesPayload) sources.push('Corral-Santana black holes');
   return sources;
 }
 

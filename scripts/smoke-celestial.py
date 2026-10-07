@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Smoke the boot: the manifest's new dataset kinds must not
-break the boot, and the small-body tier must still draw.
+"""Smoke the boot: every manifest dataset kind loads,
+its tier draws, and the boot survives the wider
+manifest.
 
     python3 scripts/smoke-celestial.py
 """
@@ -45,8 +46,14 @@ def main() -> int:
         )
         page.goto(url, wait_until="load")
         page.wait_for_function(
-            "window.__atlas && window.__atlas.stats.smallBodies !== undefined",
+            "window.__atlas && window.__atlas.stats.smallBodies !== undefined"
+            " && window.__atlas.stats.comets !== undefined"
+            " && window.__atlas.stats.majorPlanets !== undefined"
+            " && window.__atlas.stats.satellites !== undefined"
+            " && window.__atlas.stats.galaxies !== undefined"
+            " && window.__atlas.stats.blackHoles !== undefined",
             timeout=60_000,
+            polling=100,
         )
         stats = page.evaluate("window.__atlas.stats")
         backend = page.evaluate("window.__atlas.stats.backend")
@@ -58,11 +65,20 @@ def main() -> int:
     if problems:
         print("page errors during the run", file=sys.stderr)
         return 1
-    small_bodies = stats.get("smallBodies")
-    if small_bodies != 500:
-        print(f"expected 500 small bodies, drew {small_bodies}",
-              file=sys.stderr)
-        return 1
+    expected = {
+        "smallBodies": 500,
+        "comets": 1769,
+        "majorPlanets": 8,
+        "satellites": 21,
+        "galaxies": 10618,
+        "blackHoles": 33,
+    }
+    for key, wanted in expected.items():
+        drew = stats.get(key)
+        if drew != wanted:
+            print(f"expected {wanted} {key}, drew {drew}",
+                  file=sys.stderr)
+            return 1
     return 0
 
 

@@ -360,3 +360,30 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   intact. The 256-LOC rule holds: cli_fetch,
   tiles_codec, verify_sidecars and verify_report
   split out of the three files that crossed it.
+
+- 2026-10-07 — `n` #39 (sub-plan 03): the five kinds render. Comets,
+  planets and satellites share the AU point primitive (flat colour per
+  kind — reflected sunlight, never a blackbody ramp; the refactor onto
+  `auTierLayers` also fixed a silent E19 defect: the old small-body code
+  read `tile.mag`, a field the tile reader never exposes, so every body
+  drew at one size — the magnitude law now actually runs). Galaxies are
+  points sized by the tile's own BT bytes and coloured by its own B-VT
+  bytes. Black holes are GPU-drawn rings, not star points — a black hole
+  is not a light source — billboarded at constant angular size. Four
+  invariants, each unit-tested: provenance in O(1) from the tile header,
+  budget-deferral via `OptionalTiers` (galaxies and markers only; the
+  measured solar-system bodies are content, always drawn), one pick path
+  (`core/point-pick.js`) shared by clicks, search and deep links, and
+  `assertCited` on every builder. The decoder hands back float64 and
+  WebGL uploads float32 — the conversion lives in the layer builders.
+  One measurement worth keeping: the software renderer's point pipeline
+  fails program validation above ~1e22 m of render-space position
+  (bisected: clean at 1.2e22, failing at 2.3e22, independent of the
+  far plane, colours and sizes), and the galaxy catalogue spans 768 Mpc
+  = 2.4e25 m. The galaxy layer therefore renders at 1/8192 of render
+  space — invisible on screen, because the perspective divide cancels a
+  uniform scale and the floating origin keeps parallax true; depth is
+  the only thing compressed, and at these distances every galaxy already
+  sits at the far plane. 24 new tests, 385/385; the headless smoke
+  draws all six tiers (500 small bodies, 1,769 comets, 8 planets, 21
+  satellites, 10,618 galaxies, 33 black holes) with zero page errors.

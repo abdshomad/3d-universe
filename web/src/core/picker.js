@@ -52,10 +52,12 @@ export function identityAt({ tile, index, originMetres = [0, 0, 0] }) {
   if (raw === undefined || raw === null) return null;
   const metres = Math.hypot(...positionAt(tile, index, originMetres));
   return {
-    // The tile's own unit names its tier: an AU tile is the
-    // solar-system tier, so a click on it is a small body,
-    // never a star wearing one.
-    kind: tile.header.unit === 'au' ? 'small_body' : 'star',
+    // The tile's own header names its dataset kind, so a click
+    // on a comet tile is a comet, never a small body wearing
+    // one; a manifest written before kinds existed infers one
+    // from its unit, exactly as the boot loop does.
+    kind: tile.header.extra?.dataset_kind
+      || (tile.header.unit === 'au' ? 'small_body' : 'star'),
     id: raw.toString(),
     pointIndex: index,
     distancePc: metres / METRES_PER_PC,

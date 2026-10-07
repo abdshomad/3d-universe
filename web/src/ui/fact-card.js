@@ -8,8 +8,15 @@
  */
 
 import { emissionYear, formatLookback, formatYear, lookbackYears } from '../core/light-travel.js';
+import {
+  cardForBlackHole,
+  cardForComet,
+  cardForGalaxy,
+  cardForPlanet,
+  cardForSatellite,
+} from './celestial-cards.js';
 
-const DASH = '—';
+export const DASH = '—';
 
 export class UnknownObjectKindError extends Error {}
 
@@ -31,8 +38,7 @@ function rows(pairs) {
   return pairs.map(([label, value]) => [label, value ?? DASH]);
 }
 
-/** The row every card carries: when the light we are looking at left. */
-function lightRow(distancePc, observerYear) {
+export function lightRow(distancePc, observerYear) {
   if (lookbackYears(distancePc) === null || !observerYear) return null;
   return [
     'light left',
@@ -40,7 +46,7 @@ function lightRow(distancePc, observerYear) {
   ];
 }
 
-function card(name, rowPairs, provenance, extra = {}) {
+export function card(name, rowPairs, provenance, extra = {}) {
   return { name, rows: rows(rowPairs), provenance, image: null, ...extra };
 }
 
@@ -224,6 +230,11 @@ const BUILDERS = {
   frb: cardForEvent,
   gravitational_wave: cardForEvent,
   small_body: cardForSmallBody,
+  comet: cardForComet,
+  planet: cardForPlanet,
+  satellite: cardForSatellite,
+  galaxy: cardForGalaxy,
+  black_hole: cardForBlackHole,
 };
 
 /**
