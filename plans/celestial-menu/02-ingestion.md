@@ -58,3 +58,49 @@ known-stale tile, not a silently wrong one.
 `assets/tiles/`, a manifest entry with its provenance block,
 and a verifier that re-runs its source query and matches
 ids — or a file that says, with the receipt, why it cannot.
+
+
+## Exit state — 2026-10-07
+
+All five kinds are baked, manifest-entered and
+verified against their live sources:
+
+- **planets** — `horizons-planets` (8 bodies, AU):
+  the Horizons OBSERVER ephemeris, geocentric
+  apparent RA/Dec ICRF, range and APmag at
+  2026-01-01. Earth is the observer's vantage and
+  holds no geocentric position.
+- **satellites** — `horizons-satellites` (21 moons,
+  AU): the same ephemeris; the physical-data block
+  parses in all three of its published formats.
+- **comets** — `sbdb-comets` (1,769 of 4,077, AU):
+  bound orbits only; a parabolic or hyperbolic comet
+  has no place in the atlas, and the count says so.
+- **galaxies** — `galaxies-rc3` (10,618, pc):
+  redshift distances, the Hubble law with H0 = 70
+  stated on every record.
+- **black holes** — `black-holes` (33, pc):
+  Corral-Santana distances, joined to the
+  dynamical masses with their limit flags and
+  asymmetric errors.
+
+Each tile carries its dataset kind in its header,
+the manifest lifts it, and the boot loop dispatches
+on it — a kind the renderer has no primitive for
+is not drawn as something it is not (sub-plan 03
+wires the layers). The SBDB brick was fixed to
+geocentric directions (the heliocentric direction
+put a nearby body up to ~24 degrees from its true
+sky position), the small-body tile was re-baked and
+the search index re-merged. Sidecars for all five
+kinds carry the rows a card needs; `ingest
+verify_assets` checks them against live sources —
+12/12 assets resolve, 8/8 tiles round-trip.
+
+Two defects the verifier caught: the tile format's
+16-bit milli-mag bound clamps Pluto's 35.4
+magnitude (the sidecar carries the true apmag; the
+verifier compares against the clamp), and the RC3
+PGC column arrives as both `PGC11752` and `PGC
+9735`, which broke id matching until the
+normalization stripped the space.

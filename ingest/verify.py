@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ingest.astro.coordinates import ra_dec_to_vector
 from ingest.schema import CatalogObject, Provenance
-from ingest.sources import gaia, sbdb
+from ingest.sources import black_holes, galaxies, gaia, horizons, sbdb
 from ingest.tiles import (
     PARSEC_PER_AU,
     SMALL_BODY_UNIT,
@@ -59,6 +59,15 @@ def refetch(tile: Tile) -> list[CatalogObject]:
         return gaia.normalize(fields, rows, prov)
     if prov.catalog == "nasa.jpl.sbdb":
         return sbdb.run_url(prov.source_url)
+    if prov.catalog == "nasa.jpl.horizons":
+        # The ephemeris for a past epoch is stable,
+        # so the round trip is exact.
+        kind = tile.header.extra.get("dataset_kind", "planet")
+        return horizons.fetch(kind=kind, timeout=60.0)
+    if prov.catalog == "cds.vizier.rc3":
+        return galaxies.fetch()
+    if prov.catalog == "cds.vizier.a61":
+        return black_holes.fetch()
     raise ValueError(f"no verifier for catalog {prov.catalog!r}")
 
 
@@ -90,7 +99,17 @@ def verify_tile(path: str | Path) -> VerificationReport:
         dx, dy, dz = decode_position(tile, index)
         max_position = max(max_position, abs(ux * distance - dx), abs(uy * distance - dy), abs(uz * distance - dz))
         if record.mag is not None:
-            max_magnitude = max(max_magnitude, abs(record.mag - tile.mag[index] / 1000.0))
+            # The magnitude field is 16-bit signed
+            # milli-mags, so a magnitude beyond
+            # +-32.767 -- Pluto, at 35.4 -- is
+            # stored clamped; the sidecar carries
+            # the true value, and the card reads
+            # it there.
+            clamped = min(max(record.mag, -32.767), 32.767)
+            max_magnitude = max(
+                max_magnitude,
+                abs(clamped - tile.mag[index] / 1000.0),
+            )
 
     tolerance = quantization_error(tile)
     ok = missing == 0 and max_position <= tolerance * 1.001 and max_magnitude <= MAGNITUDE_TOLERANCE

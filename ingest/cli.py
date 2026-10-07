@@ -10,104 +10,31 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from dataclasses import asdict
-from pathlib import Path
 
 from ingest import manifest as manifest_module
 from ingest.catalogs import gaia_catalog
-from ingest.bake import DEFAULT_DIR, bake_gaia, bake_sbdb
-from ingest.sources import gaia, imagery, sbdb
+from ingest.bake import (
+    DEFAULT_DIR,
+    bake_black_holes,
+    bake_galaxies,
+    bake_gaia,
+    bake_horizons,
+    bake_sbdb,
+)
+from ingest.cli_fetch import (
+    _run_black_holes,
+    _run_field,
+    _run_gaia,
+    _run_galaxies,
+    _run_horizons,
+    _run_imagery,
+    _run_landmarks,
+    _run_relations,
+    _run_sbdb,
+)
+from ingest.sources import gaia
 from ingest.verify import verify_dir
-
-
-def _run_relations(args: argparse.Namespace) -> int:
-    from ingest.sources.relations import write_relations
-
-    path = write_relations(args.out)
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    citation = payload["citation"]
-    print(f"{payload['count']} relations -> {path}")
-    print(f"source: {citation['dataset']} ({citation['url']})")
-    return 0
-
-
-def _run_field(args: argparse.Namespace) -> int:
-    from ingest.sources.lss_field import write_field
-
-    path = write_field(args.out, grid=args.grid, radius_mpc=args.radius_mpc)
-    header = json.loads(path.read_text(encoding="utf-8"))
-    dataset = header["dataset"]
-    print(f"{header['grid']}^3 field over {header['radius_mpc']} Mpc -> {path}")
-    print(f"flag: {dataset['flag']} | seed: {dataset['seed']} | checksum: {header['checksum'][:16]}")
-    print(f"reference: {dataset['science_reference']}")
-    return 0
-
-
-def _run_landmarks(args: argparse.Namespace) -> int:
-    from ingest.sources.landmarks import write_landmarks
-
-    path = write_landmarks(args.out, cache=args.cache)
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    citation = payload["citation"]
-    print(f"{payload['count']} landmarks -> {path}")
-    for landmark in payload["landmarks"]:
-        print(
-            f"  {landmark['name']:20s} HIP {landmark['hip']:<7d}"
-            f" {landmark['distance_pc']:9.3f} pc"
-            f"  plx={landmark['parallax_mas']:.2f} mas"
-            f"  cross-check {landmark['cross_check_arcsec']}\""
-        )
-    print(f"source: {citation['dataset']} ({citation['url']})")
-    return 0
-
-
-def _parse_cone(value: str | None) -> tuple[float, float, float] | None:
-    if not value:
-        return None
-    parts = value.split(",")
-    if len(parts) != 3:
-        raise argparse.ArgumentTypeError("cone must be ra,dec,radius in degrees")
-    return (float(parts[0]), float(parts[1]), float(parts[2]))
-
-
-def _emit(records: list[dict], out: str | None) -> None:
-    payload = json.dumps(records, indent=2)
-    if out:
-        path = Path(out)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(payload, encoding="utf-8")
-        print(f"wrote {len(records)} records to {path}", file=sys.stderr)
-    else:
-        print(payload)
-
-
-def _run_gaia(args: argparse.Namespace) -> int:
-    catalog = gaia_catalog(args.release)
-    endpoint = gaia.ESA_ENDPOINT if args.endpoint == "esa" else None
-    records = gaia.fetch(
-        limit=args.limit,
-        min_parallax_mas=args.min_parallax,
-        max_mag=args.max_mag,
-        cone=_parse_cone(args.cone),
-        catalog=catalog,
-        endpoint=endpoint,
-    )
-    _emit([r.as_row() for r in records], args.out)
-    return 0
-
-
-def _run_sbdb(args: argparse.Namespace) -> int:
-    records = sbdb.fetch(limit=args.limit, kind=args.kind)
-    _emit([r.as_row() for r in records], args.out)
-    return 0
-
-
-def _run_imagery(args: argparse.Namespace) -> int:
-    assets = imagery.fetch_images(query=args.query, limit=args.limit)
-    _emit([asdict(a) for a in assets], args.out)
-    return 0
 
 
 def _run_bake(args: argparse.Namespace) -> int:
@@ -120,9 +47,30 @@ def _run_bake(args: argparse.Namespace) -> int:
             catalog=gaia_catalog(args.release),
             endpoint=gaia.ESA_ENDPOINT if args.endpoint == "esa" else None,
         )
-    else:
+    elif args.source == "sbdb":
         result = bake_sbdb(
             limit=args.limit, out_dir=args.out_dir, tile_id=args.tile_id
+        )
+    elif args.source == "comets":
+        result = bake_sbdb(
+            limit=args.limit, kind="c", out_dir=args.out_dir,
+            tile_id=args.tile_id or "sbdb-comets",
+        )
+    elif args.source == "planets":
+        result = bake_horizons(
+            "planet", out_dir=args.out_dir, tile_id=args.tile_id
+        )
+    elif args.source == "satellites":
+        result = bake_horizons(
+            "satellite", out_dir=args.out_dir, tile_id=args.tile_id
+        )
+    elif args.source == "galaxies":
+        result = bake_galaxies(
+            out_dir=args.out_dir, tile_id=args.tile_id
+        )
+    else:
+        result = bake_black_holes(
+            out_dir=args.out_dir, tile_id=args.tile_id
         )
     print(result.summary())
     print(f"manifest: {result.manifest_path}")
@@ -172,6 +120,28 @@ def build_parser() -> argparse.ArgumentParser:
     sbdb_parser.add_argument("--out", default=None)
     sbdb_parser.set_defaults(func=_run_sbdb)
 
+
+    horizons_parser = sub.add_parser(
+        "horizons", help="the solar-system majors and satellites"
+    )
+    horizons_parser.add_argument(
+        "--kind", default="planet", choices=["planet", "satellite"]
+    )
+    horizons_parser.add_argument("--out", default=None)
+    horizons_parser.set_defaults(func=_run_horizons)
+
+    galaxies_parser = sub.add_parser(
+        "galaxies", help="bright galaxies with measured redshifts"
+    )
+    galaxies_parser.add_argument("--out", default=None)
+    galaxies_parser.set_defaults(func=_run_galaxies)
+
+    black_holes_parser = sub.add_parser(
+        "black-holes", help="black-hole transients with measured distances"
+    )
+    black_holes_parser.add_argument("--out", default=None)
+    black_holes_parser.set_defaults(func=_run_black_holes)
+
     imagery_parser = sub.add_parser("imagery", help="public-domain deep-field imagery")
     imagery_parser.add_argument("--query", default="webb deep field")
     imagery_parser.add_argument("--limit", type=int, default=12)
@@ -179,7 +149,14 @@ def build_parser() -> argparse.ArgumentParser:
     imagery_parser.set_defaults(func=_run_imagery)
 
     bake_parser = sub.add_parser("bake", help="fetch a source and write a tile")
-    bake_parser.add_argument("--source", choices=["gaia", "sbdb"], default="gaia")
+    bake_parser.add_argument(
+        "--source",
+        choices=[
+            "gaia", "sbdb", "comets", "planets",
+            "satellites", "galaxies", "black-holes",
+        ],
+        default="gaia",
+    )
     bake_parser.add_argument("--limit", type=int, default=5000)
     bake_parser.add_argument("--min-parallax", type=float, default=10.0)
     bake_parser.add_argument("--out-dir", default=DEFAULT_DIR)

@@ -8,13 +8,12 @@ from pathlib import Path
 
 from ingest.catalogs import Catalog
 from ingest.schema import CatalogObject
-from ingest.sources import gaia, sbdb
+from ingest.sources import black_holes, galaxies, gaia, horizons, sbdb
 from ingest.tiles import Tile, build_tile, read_tile, write_tile
 from ingest import manifest as manifest_module
 
 DEFAULT_DIR = "assets/tiles"
 SBDB_TILE = "sbdb-small-bodies"
-SBDB_SIDECAR = "sbdb-small-bodies.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,7 +55,10 @@ def bake_gaia(
         catalog=catalog,
         endpoint=endpoint,
     )
-    return _write(records, out_dir, tile_id or f"gaia-{catalog.release.lower()}")
+    return _write(
+        records, out_dir, tile_id or f"gaia-{catalog.release.lower()}",
+        extra={"dataset_kind": "star"},
+    )
 
 
 def bake_sbdb(
@@ -65,20 +67,92 @@ def bake_sbdb(
     out_dir: str = DEFAULT_DIR,
     tile_id: str | None = None,
 ) -> BakeResult:
+    """Bake asteroids ('a') or comets ('c').
+
+    Comets are bound orbits only: a parabolic or
+    hyperbolic comet has no place in a solar-system
+    atlas, and the dataset's count says so.
+    """
     records = sbdb.fetch(limit=limit, kind=kind)
-    result = _write(records, out_dir, tile_id or SBDB_TILE)
-    sidecar = write_sbdb_sidecar(records, Path(out_dir) / SBDB_SIDECAR)
-    return BakeResult(
-        path=result.path,
-        manifest_path=result.manifest_path,
-        count=result.count,
-        tile=result.tile,
-        sidecar_path=sidecar,
+    if kind == "c":
+        records = [
+            record for record in records
+            if (record.extra.get("e") or 0.0) < 1.0
+        ]
+    dataset_kind = "comet" if kind == "c" else "small_body"
+    tile_id = tile_id or SBDB_TILE
+    result = _write(records, out_dir, tile_id,
+                    extra={"dataset_kind": dataset_kind})
+    sidecar = write_sidecar(
+        records, Path(out_dir) / f"{tile_id}.json",
+        id_key="spkid", rows_name="bodies",
+        dataset_kind=dataset_kind,
     )
+    return _with_sidecar(result, sidecar)
 
 
-def _write(records: list[CatalogObject], out_dir: str, tile_id: str) -> BakeResult:
-    tile = build_tile(tile_id, records)
+def bake_horizons(
+    kind: str = "planet",
+    out_dir: str = DEFAULT_DIR,
+    tile_id: str | None = None,
+    timeout: float = 60.0,
+) -> BakeResult:
+    """The solar-system majors or their satellites."""
+    records = horizons.fetch(kind=kind, timeout=timeout)
+    tile_id = tile_id or f"horizons-{kind}s"
+    result = _write(records, out_dir, tile_id,
+                    extra={"dataset_kind": kind})
+    sidecar = write_sidecar(
+        records, Path(out_dir) / f"{tile_id}.json",
+        id_key="code", rows_name="bodies",
+        dataset_kind=kind,
+    )
+    return _with_sidecar(result, sidecar)
+
+
+def bake_galaxies(
+    out_dir: str = DEFAULT_DIR,
+    tile_id: str | None = None,
+    timeout: float = 240.0,
+) -> BakeResult:
+    """Bright galaxies with a measured redshift."""
+    tile_id = tile_id or "galaxies-rc3"
+    records = galaxies.fetch(timeout=timeout)
+    result = _write(records, out_dir, tile_id,
+                    extra={"dataset_kind": "galaxy"})
+    sidecar = write_sidecar(
+        records, Path(out_dir) / f"{tile_id}.json",
+        id_key="pgc", rows_name="galaxies",
+        dataset_kind="galaxy",
+    )
+    return _with_sidecar(result, sidecar)
+
+
+def bake_black_holes(
+    out_dir: str = DEFAULT_DIR,
+    tile_id: str | None = None,
+    timeout: float = 240.0,
+) -> BakeResult:
+    """Black-hole transients with a measured distance."""
+    tile_id = tile_id or "black-holes"
+    records = black_holes.fetch(timeout=timeout)
+    result = _write(records, out_dir, tile_id,
+                    extra={"dataset_kind": "black_hole"})
+    sidecar = write_sidecar(
+        records, Path(out_dir) / f"{tile_id}.json",
+        id_key="recno", rows_name="black_holes",
+        dataset_kind="black_hole",
+    )
+    return _with_sidecar(result, sidecar)
+
+
+def _write(
+    records: list[CatalogObject],
+    out_dir: str,
+    tile_id: str,
+    extra: dict[str, str] | None = None,
+) -> BakeResult:
+    tile = build_tile(tile_id, records, extra=extra)
     path = write_tile(Path(out_dir) / f"{tile_id}.u3dtile", tile)
     manifest_path = manifest_module.write(out_dir)
     return BakeResult(
@@ -89,7 +163,23 @@ def _write(records: list[CatalogObject], out_dir: str, tile_id: str) -> BakeResu
     )
 
 
-def write_sbdb_sidecar(records: list[CatalogObject], path: Path) -> Path:
+def _with_sidecar(result: BakeResult, sidecar: Path) -> BakeResult:
+    return BakeResult(
+        path=result.path,
+        manifest_path=result.manifest_path,
+        count=result.count,
+        tile=result.tile,
+        sidecar_path=sidecar,
+    )
+
+
+def write_sidecar(
+    records: list[CatalogObject],
+    path: Path,
+    id_key: str,
+    rows_name: str = "bodies",
+    dataset_kind: str | None = None,
+) -> Path:
     """The rows a fact card needs that a tile cannot carry.
 
     A tile stores ids, positions, magnitudes and colours -- enough to
@@ -108,12 +198,20 @@ def write_sbdb_sidecar(records: list[CatalogObject], path: Path) -> Path:
             "retrieved": prov.fetched_at,
         },
         "count": len(records),
-        "bodies": [
-            {"spkid": record.source_id, **record.extra} for record in records
+        rows_name: [
+            {id_key: record.source_id, **record.extra}
+            for record in records
         ],
     }
+    if dataset_kind is not None:
+        payload["dataset_kind"] = dataset_kind
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
+
+
+def write_sbdb_sidecar(records: list[CatalogObject], path: Path) -> Path:
+    """The small-body sidecar, keyed by spkid."""
+    return write_sidecar(records, path, id_key="spkid")
 
 
 def load(tile_id: str, out_dir: str = DEFAULT_DIR) -> Tile:

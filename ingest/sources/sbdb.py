@@ -2,8 +2,10 @@
 
 Orbital elements come from the SBDB Query API; positions are computed from
 those elements at the catalog epoch, so every record carries the epoch it is
-valid for rather than pretending it is current forever. The record id is the
-numeric `spkid`, which is what the tile format stores.
+valid for rather than pretending it is current forever. Positions are
+geocentric: the direction the observer sees the body, taken from its
+heliocentric vector minus the Earth's. The record id is the numeric
+`spkid`, which is what the tile format stores.
 """
 
 from __future__ import annotations
@@ -68,12 +70,20 @@ def _to_object(row: dict, prov: Provenance) -> CatalogObject | None:
 
     x_km, y_km, z_km = heliocentric_ecliptic_km(elements)
     r_au = math.sqrt(x_km**2 + y_km**2 + z_km**2) / AU_KM
-    ra, dec = ecliptic_to_equatorial(x_km, y_km, z_km)
 
+    # The observer's vantage: the geocentric vector, not the
+    # heliocentric one, defines the direction the body is seen
+    # from. A heliocentric direction puts a nearby body up to
+    # ~24 degrees from its true sky position, which is not
+    # where an observer-centred atlas may point.
     earth = earth_heliocentric_au(elements.epoch_jd)
-    delta_au = math.sqrt(
-        sum((a / AU_KM - e_au) ** 2 for a, e_au in zip((x_km, y_km, z_km), earth))
+    gx_km, gy_km, gz_km = (
+        x_km - earth[0] * AU_KM,
+        y_km - earth[1] * AU_KM,
+        z_km - earth[2] * AU_KM,
     )
+    ra, dec = ecliptic_to_equatorial(gx_km, gy_km, gz_km)
+    delta_au = math.sqrt(gx_km**2 + gy_km**2 + gz_km**2) / AU_KM
 
     abs_mag = _number(row.get("H"))
     mag = apparent_magnitude(abs_mag, r_au, delta_au) if abs_mag is not None else None

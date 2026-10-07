@@ -37,6 +37,10 @@ class TileEntry:
     first_source_id: str
     last_source_id: str
     mag_range: list[float] = field(default_factory=list)
+    # The dataset kind the tile carries, lifted from the
+    # tile header's extra -- what the renderer and the
+    # celestial menu dispatch on.
+    kind: str = ""
 
 
 @dataclass(slots=True)
@@ -86,6 +90,7 @@ def entry_for(path: str | Path) -> TileEntry:
         first_source_id=header.first_source_id,
         last_source_id=header.last_source_id,
         mag_range=list(header.mag_range),
+        kind=header.extra.get("dataset_kind", ""),
     )
 
 

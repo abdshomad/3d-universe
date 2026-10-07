@@ -28,12 +28,19 @@ from __future__ import annotations
 
 import json
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 from ingest.http import FetchError, fetch_text
 from ingest.sources.landmarks import fetch_hipparcos, parse_hipparcos
 from ingest.sources import sbdb
+from ingest.verify_sidecars import (
+    check_black_holes,
+    check_galaxies,
+    check_horizons,
+)
+from ingest.verify_report import print_report
 from ingest.tiles import TileError, read_tile
 from ingest.verify_hipparcos import (
     check_binaries,
@@ -58,6 +65,11 @@ ASSETS = {
     "binaries": "assets/relations/binaries.json",
     "exoplanets": "assets/relations/exoplanets.json",
     "small-bodies": "assets/tiles/sbdb-small-bodies.json",
+    "comets": "assets/tiles/sbdb-comets.json",
+    "planets": "assets/tiles/horizons-planets.json",
+    "satellites": "assets/tiles/horizons-satellites.json",
+    "galaxies": "assets/tiles/galaxies-rc3.json",
+    "black-holes": "assets/tiles/black-holes.json",
 }
 HIPPARCOS_ASSETS = ("landmarks", "nearby", "figure-stars", "binaries")
 
@@ -75,76 +87,6 @@ def _load_gaia_ids() -> tuple[Any, str | None]:
                       "regenerates it) -- Gaia secondaries unverified")
     except (TileError, OSError) as exc:
         return None, f"{GAIA_TILE} is unreadable: {exc}"
-
-
-def _print_report(reports: dict[str, dict], receipts: list[str]) -> None:
-    for name, report in reports.items():
-        print(f"{name} ({ASSETS[name]})")
-        if report.get("unreachable"):
-            print("  source unreachable from this host -- receipt recorded")
-            continue
-        resolved = f"{report['resolved']}/{report['total']}"
-        if name == "landmarks":
-            print(f"  {resolved} landmarks resolve against {report['source']}; "
-                  "parallax, position and distance agree")
-        elif name == "nearby":
-            print(f"  {resolved} stars resolve against {report['source']}; every "
-                  "parallax is at least 1 mas, as the builder requires")
-        elif name == "figure-stars":
-            print(f"  {resolved} stars resolve against {report['source']}; every star "
-                  "has a parallax and is brighter than V=6.5, as the builder "
-                  f"requires ({report['skipped_by_builder']} rows were skipped at build)")
-        elif name == "binaries":
-            print(f"  {resolved} pairs resolve: primaries "
-                  f"{report['hipparcos_primaries']} in Hipparcos, "
-                  f"{report['gaia_primaries']} in the Gaia tile; "
-                  f"secondaries {report['hipparcos_secondaries']} in "
-                  f"Hipparcos, {report['gaia_secondaries']} in the Gaia tile")
-            if report.get("gaia_unverified"):
-                print(f"  {report['gaia_unverified']} Gaia components "
-                      "unverified: the tile is not on this host")
-            wds = report.get("wds_ids")
-            if wds is not None:
-                print(f"  {wds['distinct'] - len(wds['missing'])}/{wds['distinct']} distinct "
-                      "WDS designations resolve against B/wds/wds")
-            elif report.get("wds_receipt"):
-                print(f"  WDS designations unverified: {report['wds_receipt']}")
-        elif name == "constellations":
-            print(f"  {resolved} figures resolve against {report['source']}; names, "
-                  "segment counts and coordinates agree")
-        elif name == "exoplanets":
-            print(f"  {resolved} planets resolve against {report['source']} within "
-                  f"{EXOPLANET_MAX_DISTANCE_PC:g} pc")
-            revised = report["revised"]
-            if revised:
-                largest = max(revised, key=lambda row: abs(row["delta_pc"]))
-                print(f"  the archive moved since the asset was written: {len(revised)} "
-                      f"distances revised (largest {largest['pl_name']}: "
-                      f"{largest['delta_pc']:+.2f} pc)")
-            new_in_archive = report["new_in_archive"]
-            if new_in_archive:
-                print(f"  {len(new_in_archive)} planets confirmed since the asset was "
-                      f"written: {', '.join(new_in_archive[:3])}")
-        elif name == "small-bodies":
-            print(f"  {resolved} bodies resolve against {report['source']}; "
-                  "names, diameters and magnitudes agree")
-            revised = report.get("revised") or []
-            if revised:
-                print(f"  the archive moved since the asset was written: "
-                      f"{len(revised)} orbital epochs revised (newest "
-                      f"{revised[0]['epoch']})")
-        problems = report.get("problems") or []
-        if problems:
-            print(f"  PROBLEMS ({len(problems)}):")
-            for problem in problems[:5]:
-                print(f"    {problem['id']}: {problem['problem']} "
-                      f"(asset {problem['asset']}, source {problem['source']})")
-            if len(problems) > 5:
-                print(f"    ... and {len(problems) - 5} more")
-    if receipts:
-        print("receipts")
-        for receipt in receipts:
-            print(f"  {receipt}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -173,16 +115,23 @@ def main(argv: list[str] | None = None) -> int:
         reports["figure-stars"] = check_figure_stars(_load(root, ASSETS["figure-stars"]), hipparcos)
         reports["binaries"] = check_binaries(_load(root, ASSETS["binaries"]), hipparcos, gaia_ids)
 
-    for name, check in (("constellations", check_constellations),
-                        ("exoplanets", check_exoplanets),
-                        ("small-bodies", check_small_bodies)):
+    for name, check in (
+        ("constellations", check_constellations),
+        ("exoplanets", check_exoplanets),
+        ("small-bodies", check_small_bodies),
+        ("comets", partial(check_small_bodies, asset="comets")),
+        ("planets", check_horizons),
+        ("satellites", check_horizons),
+        ("galaxies", check_galaxies),
+        ("black-holes", check_black_holes),
+    ):
         try:
             reports[name] = check(_load(root, ASSETS[name]))
         except (FetchError, OSError, ValueError) as exc:
             receipts.append(f"{name}: source unreachable from this host ({exc})")
             reports[name] = {"unreachable": True}
 
-    _print_report(reports, receipts)
+    print_report(reports, receipts, ASSETS)
 
     failed = [name for name, report in reports.items() if report.get("problems")]
     unverified = [name for name, report in reports.items() if report.get("unreachable")]
@@ -196,7 +145,9 @@ def main(argv: list[str] | None = None) -> int:
     return 2 if unverified else 0
 
 
-def check_small_bodies(payload: dict) -> dict:
+def check_small_bodies(
+    payload: dict, asset: str = "small-bodies",
+) -> dict:
     """Every sidecar row resolves against a fresh SBDB query.
 
     A small body's name, diameter and magnitude do not move;
@@ -215,7 +166,7 @@ def check_small_bodies(payload: dict) -> dict:
         if record is None:
             problems.append({"id": spkid,
                              "problem": "spkid no longer in the SBDB query",
-                             "asset": "small-bodies",
+                             "asset": asset,
                              "source": "nasa.jpl.sbdb"})
             continue
         extra = record.extra
@@ -225,7 +176,7 @@ def check_small_bodies(payload: dict) -> dict:
                     "id": spkid,
                     "problem": f"{field} is {extra.get(field)!r} in the "
                                f"source, {body.get(field)!r} in the asset",
-                    "asset": "small-bodies",
+                    "asset": asset,
                     "source": "nasa.jpl.sbdb",
                 })
         if body.get("epoch") != extra.get("epoch"):

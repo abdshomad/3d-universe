@@ -258,14 +258,26 @@ async function start() {
   const manifest = await loadJson(`${TILE_DIR}/manifest.json`);
   tree = new LodTree();
   for (const entry of manifest.tiles) {
-    if (entry.unit === 'au') {
+    // The manifest names each tile's dataset kind; a manifest
+    // written before kinds existed infers one from its unit,
+    // so an old tile loads exactly as it did.
+    const kind = entry.kind
+      || (entry.unit === 'au' ? 'small_body' : 'star');
+    if (kind === 'star') {
+      tree.addFromManifest(entry);
+      tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
+      continue;
+    }
+    if (kind === 'small_body') {
       // The solar-system tier is not star LOD material: one
       // small tile in its own unit, always drawn in full.
       smallBodyTile = await loadTile(`${TILE_DIR}/${entry.file}`);
       continue;
     }
-    tree.addFromManifest(entry);
-    tiles.push(await loadTile(`${TILE_DIR}/${entry.file}`));
+    // Sub-plan 03 wires the per-kind layers -- planets,
+    // satellites, comets, galaxies, black holes. Until then
+    // the renderer does not draw them: a dataset without its
+    // primitive is not drawn as something it is not.
   }
   const landmarkPayload = await loadJson(LANDMARK_DIR).catch(() => null);
   if (landmarkPayload?.landmarks?.length) {

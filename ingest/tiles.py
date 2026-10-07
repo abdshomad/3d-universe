@@ -85,10 +85,20 @@ class Tile:
         return self.ids[index]
 
 
+# The solar-system kinds: their tiles measure in AU,
+# because parsec quantization would collapse the system
+# into a single point.
+SOLAR_SYSTEM_KINDS = {"small_body", "planet", "satellite"}
+
+
 def unit_for(records: Iterable[CatalogObject]) -> str:
-    """Small bodies need AU; everything else is catalogued in parsecs."""
+    """Solar-system bodies need AU; everything else is in parsecs."""
     for record in records:
-        return SMALL_BODY_UNIT if record.kind == "small_body" else STAR_UNIT
+        return (
+            SMALL_BODY_UNIT
+            if record.kind in SOLAR_SYSTEM_KINDS
+            else STAR_UNIT
+        )
     return STAR_UNIT
 
 
@@ -100,7 +110,11 @@ def numeric_id(value: str) -> int | None:
         return None
 
 
-def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
+def build_tile(
+    tile_id: str,
+    records: Iterable[CatalogObject],
+    extra: dict[str, Any] | None = None,
+) -> Tile:
     """Quantize catalog records into a tile.
 
     Records without a distance or without an integer id are skipped and counted
@@ -141,12 +155,12 @@ def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
         pos_q[3 * index : 3 * index + 3] = array(
             "H",
             [
-                _quantize(px, mins[0], extent[0]),
-                _quantize(py, mins[1], extent[1]),
-                _quantize(pz, mins[2], extent[2]),
+                quantize(px, mins[0], extent[0]),
+                quantize(py, mins[1], extent[1]),
+                quantize(pz, mins[2], extent[2]),
             ],
         )
-        mag[index] = _quantize_mag(record.mag)
+        mag[index] = quantize_mag(record.mag)
         r, g, b = color_to_rgb(record.color_index)
         rgb[3 * index : 3 * index + 3] = array("B", [int(r * 255), int(g * 255), int(b * 255)])
 
@@ -156,11 +170,12 @@ def build_tile(tile_id: str, records: Iterable[CatalogObject]) -> Tile:
         count=len(kept),
         origin=mins,
         extent=extent,
-        provenance=_provenance_of(kept[0]),
+        provenance=provenance_of(kept[0]),
         first_source_id=kept[0].source_id,
         last_source_id=kept[-1].source_id,
         skipped=skipped,
-        mag_range=_magnitude_range(kept),
+        mag_range=magnitude_range(kept),
+        extra=dict(extra or {}),
     )
     return Tile(header=header, ids=array("Q", ids), pos_q=pos_q, mag=mag, rgb=rgb)
 
@@ -215,35 +230,3 @@ def quantization_error(tile: Tile) -> float:
     """Worst-case position error along one axis, in the tile's unit."""
     return max(tile.header.extent) / MAX_POSITION_U16 * 0.5
 
-
-def _provenance_of(record: CatalogObject) -> dict[str, Any]:
-    prov = record.provenance
-    return {
-        "catalog": prov.catalog,
-        "release": prov.release,
-        "flag": prov.flag,
-        "query": prov.query,
-        "source_url": prov.source_url,
-        "fetched_at": prov.fetched_at,
-    }
-
-
-def _quantize(value: float, origin: float, extent: float) -> int:
-    scaled = (value - origin) / extent * MAX_POSITION_U16
-    return int(min(max(round(scaled), 0), MAX_POSITION_U16))
-
-
-
-def _magnitude_range(records: list[CatalogObject]) -> list[float]:
-    """Brightest and faintest magnitude baked into a tile, for LOD decisions."""
-    values = [record.mag for record in records if record.mag is not None]
-    if not values:
-        return []
-    return [round(min(values), 3), round(max(values), 3)]
-
-def _quantize_mag(magnitude: float | None) -> int:
-    if magnitude is None:
-        return 0
-    scaled = round(magnitude * MILLI_MAGS_PER_MAG)
-    limit = 32767
-    return int(min(max(scaled, -limit), limit))

@@ -322,3 +322,41 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   SBDB path covers the shipped tile (500/500 against live
   SBDB) and the asset verifier covers the sidecar — 7/7
   assets resolve. 361/361 node tests.
+
+- 2026-10-07 — `n` #38 (E22/02): the five catalogues
+  bake and verify. Planets and satellites come from
+  JPL Horizons as geocentric apparent positions at a
+  stated epoch (the OBSERVER ephemeris: RA/Dec ICRF,
+  range and APmag in one call; the physical-data
+  block parses in all three of its published formats,
+  so radius, V(1,0), albedo and mass ride on every
+  record). Comets are the SBDB comet query filtered
+  to bound orbits (1,769 of the 4,077 the API
+  counts). Galaxies are RC3's 10,618 redshift rows,
+  distance derived by the Hubble law with H0 = 70
+  stated on the record. Black holes are
+  Corral-Santana's 33 distance rows joined to the 17
+  dynamical masses, limit flags and asymmetric errors
+  intact. Every tile carries its dataset kind in its
+  header, the manifest lifts it, and the boot loop
+  dispatches on it — a kind the renderer has no
+  primitive for is not drawn as something it is not.
+  The SBDB brick now computes geocentric directions
+  too: the old heliocentric direction put a nearby
+  body up to ~24 degrees from its true sky position,
+  so the small-body tile was re-baked and the search
+  index re-merged. Two defects the verifier caught:
+  the tile format's 16-bit milli-mag bound clamps
+  Pluto's 35.4 (the sidecar now carries the true
+  apmag, the verifier compares against the clamp),
+  and the RC3 PGC column arrives in two formats
+  (`PGC11752` and `PGC 9735`), which broke id
+  matching until the normalization stripped the
+  space. All 8 tiles round-trip against their live
+  sources, all 12 shipped assets resolve (5 new
+  sidecar checks), 361/361 node tests, and a
+  headless-browser smoke proves the boot survives
+  the wider manifest with the small-body tier
+  intact. The 256-LOC rule holds: cli_fetch,
+  tiles_codec, verify_sidecars and verify_report
+  split out of the three files that crossed it.

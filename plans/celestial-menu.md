@@ -21,12 +21,12 @@ the exact lie this project exists to avoid (PRD decision 1,
 | landmarks | Hipparcos via VizieR (`search/nearby.json`) | searched, flown to |
 | exoplanets | NASA Exoplanet Archive (`relations/exoplanets.json`) | facts on host cards |
 | pulsars | ATNF psrcat (spark markers) | rendered, picked |
-| small bodies | JPL SBDB (`ingest/sources/sbdb.py`) | rendered, picked, searched — E19 |
-| **planets** | JPL Horizons API (9 bodies, vectors + APmag at epoch) | **INGEST — sub-plan 01** |
-| **satellites** | JPL Horizons API (21 major moons, vectors + APmag) | **INGEST — sub-plan 01** |
-| **comets** | JPL SBDB Query API, `sb-kind=c` (4,077) | **INGEST — sub-plan 01** |
-| **galaxies** | VizieR TAP, RC3 `VII/155/rc3` (10,618 of 23,011 carry cz) | **INGEST — sub-plan 01** |
-| **black holes** | VizieR, Corral-Santana 2016 `J/A+A/587/A61` (33 of 57 carry distances) | **INGEST — sub-plan 01** |
+| small bodies | JPL SBDB (`ingest/sources/sbdb.py`), geocentric at the elements' epoch | rendered, picked, searched — E19; re-baked geocentric in 02 |
+| **planets** | JPL Horizons OBSERVER ephemeris (8 majors + Pluto: geocentric RA/Dec ICRF, range, APmag at epoch) | **baked, verified, cited — sub-plan 02** |
+| **satellites** | JPL Horizons OBSERVER ephemeris (21 major moons, same ephemeris) | **baked, verified, cited — sub-plan 02** |
+| **comets** | JPL SBDB Query API, `sb-kind=c` (1,769 of 4,077 with bound orbits) | **baked, verified, cited — sub-plan 02** |
+| **galaxies** | VizieR TAP, RC3 `VII/155/rc3` (10,618 of 23,011 carry cz; distance = cz/H0, H0 = 70 stated) | **baked, verified, cited — sub-plan 02** |
+| **black holes** | VizieR, Corral-Santana 2016 `J/A+A/587/A61` (33 of 57 carry distances, 17 carry masses) | **baked, verified, cited — sub-plan 02** |
 | deep fields | Webb/Hubble imagery | backdrop planes |
 | large-scale structure | generated field | rendered, badged SIMULATED |
 
