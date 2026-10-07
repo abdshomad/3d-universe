@@ -13,8 +13,9 @@ picking](next-enhancements.md) · [E9 captions](next-enhancements.md) · [E10 ev
 picking](next-enhancements.md) · [E11 binary pairs](next-enhancements.md) · [E12 link
 run](next-enhancements.md) · [E17 asset
 verification](next-enhancements.md) · [E18 re-measurement](next-enhancements.md) ·
-[E19 the solar system tier](next-enhancements.md)
-— 361 node tests.
+[E19 the solar system tier](next-enhancements.md) ·
+[E22 the known-bodies menu](next-enhancements.md)
+— 391 node tests.
 ---
 ## E20 — The 100,000-star criterion, measured or withdrawn
 
@@ -101,3 +102,43 @@ bug.
 kinds with their flags, every entry flies and opens a card that
 names its source, and a kind without a catalogue is absent or
 marked not-held — never populated.
+
+## E23 — The point pipeline kills SwiftShader at ~15 s
+
+**Why now.** Found while extending the celestial smoke to
+live past its first two seconds (E22/04): the committed
+code — no menu changes involved — loses the WebGL device
+about 15 s into the default route under software rendering.
+Three shader-validation failures (`Shader Error 0`, then
+`1282` × N, empty info logs) and then
+`WebGL Device Lost: Unknown reason`. Real keypresses wait
+~1.4 s each behind the frame loop, so any check that
+interacts with the page lives long enough to hit it.
+
+**What is known (measured, 2026-10-07).** Pre-existing on
+`HEAD` (verified by stashing the menu work and re-running).
+Not the far-scale limit: the camera is near the floating
+origin at the failure, and the galaxy layer's 1/8192 render
+scale already covers that. It is cumulative across the
+additive point layers — hiding **any one** of `stars`,
+`lss-field`, `sparks`, `nebulosity`, `star-dust`, `galaxies`
+keeps a 16 s run clean, so each layer is necessary to the
+failure; the deep-field backdrop and the constellation
+ribbons are innocent (hiding them changes nothing). Host
+memory is not the cause (490 GB free).
+
+**Scope.** Find the resource SwiftShader exhausts: capture
+the failing program's validation state (the info log is
+empty today — try `gl.getProgramInfoLog` before three's
+wrapper, or run with `WEBGL_debug_renderer_info`), count
+live programs/uniforms/attribute buffers at the failure
+moment, and compare backends (`--use-angle=swiftshader`
+vs `--use-gl=swiftshader`). If it is a hard software-raster
+limit, the honest fix is the frame-budget controller
+shedding whole point *layers* (not only stars) when the
+backend is software — the same rule that sheds stars today,
+one level up.
+
+**Exit.** A 60 s headless run under SwiftShader completes
+with zero page errors and all six point layers drawing.
+

@@ -387,3 +387,27 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   sits at the far plane. 24 new tests, 385/385; the headless smoke
   draws all six tiers (500 small bodies, 1,769 comets, 8 planets, 21
   satellites, 10,618 galaxies, 33 black holes) with zero page errors.
+
+- 2026-10-07 — `n` #40 (sub-plan 04): the known-bodies menu — a
+  projection of what is loaded, and what is not. `ui/menu.js` holds
+  the pure view model (`menuModel`) and the paint (`renderMenu`);
+  `core/menu.js` is the controller, which owns the keyboard while the
+  panel is open: `b` opens and closes, arrows move, Enter picks,
+  Escape closes, Tab cycles inside the panel and focus returns to the
+  opener on close. A kind with no dataset is listed as *not held*,
+  with the reason — never populated; the provenance flag rides on each
+  entry and a missing flag renders an em dash, never a guess. The menu
+  is built from the scene once at boot (`setModel`), because the tiles
+  are fixed after boot and rebuilding mid-navigation would reset the
+  user's row. Six model rules in `web/test/menu.test.mjs` (391/391).
+  The headless smoke drives the panel with DOM key events — real
+  keypresses wait ~1.4 s each behind the software frame loop, and a
+  check that waits that long outlives the page — and verifies the six
+  entries match `window.__atlas`'s counts exactly, arrows move small
+  bodies to comets, Enter picks, Escape closes, Tab is trapped, with
+  zero page errors. Along the way the smoke exposed a pre-existing
+  failure (recorded as E23 in `plans/next-enhancements.md`): the
+  committed rendering pipeline loses the WebGL device ~15 s into the
+  default route under SwiftShader — every one of the six additive point
+  layers is necessary to it, the backdrop and ribbons are innocent, and
+  it is not the far-scale limit the galaxy render scale already handles.

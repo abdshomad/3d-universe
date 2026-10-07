@@ -54,6 +54,8 @@ import { createBlackHoleMarkers, updateBlackHoleMarkers } from './render/marker-
 import { OptionalTiers } from './core/optional-tiers.js';
 import { pickTiledPoints, pickMarkersAt } from './core/point-pick.js';
 import { METRES_PER_PC, metresToPc } from './core/units.js';
+import { Menu } from './core/menu.js';
+import { menuModel } from './ui/menu.js';
 import { celestialDirection } from './core/celestial.js';
 import { hudModel, renderHud } from './ui/hud.js';
 import { FlightController, inputFromKeys } from './core/flight-controls.js';
@@ -73,6 +75,16 @@ const keys = new Set();
 let freeFlight = false;
 window.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
+  // While the menu is open it owns the keyboard: only
+  // `b`, which closes it, reaches the rest of the app.
+  if (menu?.opened) {
+    if (key === 'b') menu.toggle();
+    return;
+  }
+  if (key === 'b' && document.activeElement?.id !== 'search') {
+    menu?.toggle();
+    return;
+  }
   if (key === '/' && document.activeElement !== document.getElementById('search')) {
     event.preventDefault();
     document.getElementById('search')?.focus();
@@ -150,6 +162,27 @@ let planetsTile = null;
 let satellitesTile = null;
 let galaxiesTile = null;
 let blackHolesTile = null;
+
+/** The menu reads the loaded tiles — and only those.
+  *  A kind with no tile is not held, and the model
+  *  says so with the reason. */
+function menuLoaded() {
+  const datasets = [
+    ['small_body', smallBodyTile],
+    ['comet', cometsTile],
+    ['planet', planetsTile],
+    ['satellite', satellitesTile],
+    ['galaxy', galaxiesTile],
+    ['black_hole', blackHolesTile],
+  ];
+  return datasets
+    .filter(([, tile]) => tile)
+    .map(([kind, tile]) => ({
+      kind,
+      count: tile.count,
+      flag: tile.header.provenance.flag,
+    }));
+}
 const cometsRows = new Map();
 const planetsRows = new Map();
 const satellitesRows = new Map();
@@ -414,6 +447,9 @@ async function start() {
   atlas.rig.positionMetres = route.sample(0).positionMetres;
   applySharedView(sharedView);
   redraw();
+  // The menu is a projection of the loaded state,
+  // built once the boot has every tile in hand.
+  menu.setModel(menuModel({ loaded: menuLoaded() }));
 
   let previous = performance.now();
   const loop = (now) => {
@@ -1326,6 +1362,15 @@ const tour = new Tour(TOUR_STEPS);
 const TOUR_SEEN_KEY = 'u3-tour-seen';
 // Someone who asks for reduced motion gets a still sky: no self-flying, no drift.
 const motion = motionPolicy({ reduced: prefersReducedMotion() });
+// The menu is a view over the loaded datasets. What a
+// picked entry does — where it flies — belongs to the
+// flight wiring, so the pick only closes the panel for
+// now and hands the entry over.
+const menu = new Menu({
+  root: document,
+  motion,
+  onPick: () => menu.close(),
+});
 const sharedView = decodeView(globalThis.location?.hash ?? '');
 let lastSharedHash = '';
 

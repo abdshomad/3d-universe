@@ -75,6 +75,7 @@ export const KEY_BINDINGS = [
   { keys: ['shift'], action: 'faster' },
   { keys: ['j'], action: 'guided journey' },
   { keys: ['c'], action: 'cinematic auto-fly' },
+  { keys: ['b'], action: 'open the bodies menu' },
   { keys: ['r'], action: 'scale-out route' },
   { keys: ['/'], action: 'focus search' },
   { keys: ['escape'], action: 'dismiss hints' },

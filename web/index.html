@@ -89,6 +89,13 @@
 
       #badge { position: absolute; bottom: 18px; right: 16px; padding: 6px 11px;
         border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2; letter-spacing: 0.22em; }
+      #menu-button { position: absolute; bottom: 46px; left: 16px;
+        padding: 6px 11px; pointer-events: auto; background: none;
+        border: 1px solid rgba(138, 143, 152, 0.3); color: #c6cad2;
+        font: inherit; font-size: 11px; letter-spacing: 0.06em;
+        text-transform: none; line-height: 1.6; cursor: pointer; }
+      #menu-button:hover { border-color: rgba(198, 202, 210, 0.5);
+        color: #c6cad2; }
       #hud-meta { position: absolute; top: 14px; right: 16px; color: var(--ink-dim); text-align: right; }
       /* One field, no chrome: search has to be reachable without a tutorial. */
       #search { position: absolute; top: 42px; right: 16px; width: 190px; padding: 5px 8px;
@@ -126,6 +133,42 @@
         border-color: rgba(198, 202, 210, 0.5); }
       #tour button:disabled { opacity: 0.35; cursor: default; }
       [data-tour-spot] { outline: 1px solid rgba(198, 202, 210, 0.85); outline-offset: 3px; }
+      /* The known-bodies menu: what the atlas holds, and
+         what it does not. Same chrome language as the
+         tour; the rows are buttons, so the keyboard
+         reaches them with no extra machinery. */
+      #menu { position: absolute; top: 100px; right: 16px;
+        width: 300px; padding: 12px 14px;
+        border: 1px solid rgba(138, 143, 152, 0.3); background: rgba(5, 6, 10, 0.72); }
+      #menu[hidden] { display: none; }
+      #menu .title { color: #c6cad2; letter-spacing: 0.22em; }
+      #menu .subtitle { margin-top: 4px; color: var(--ink-dim);
+        font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; }
+      #menu .list { margin-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+      .menu-entry { pointer-events: auto; display: flex; align-items: baseline;
+        gap: 8px; background: none; border: 1px solid transparent;
+        color: var(--ink); font: inherit; font-size: 10px;
+        letter-spacing: 0.08em; text-transform: none; padding: 5px 7px;
+        cursor: pointer; text-align: left; }
+      .menu-entry[data-active] { border-color: rgba(198, 202, 210, 0.5);
+        background: rgba(198, 202, 210, 0.06); }
+      .menu-name { flex: 1; }
+      .menu-count { color: var(--ink-dim); font-size: 9px; }
+      .menu-flag { font-size: 8px; letter-spacing: 0.18em; }
+      .menu-flag[data-menu-flag="MEASURED"] { color: #7fce9a; }
+      .menu-flag[data-menu-flag="SIMULATED"] { color: #d9a45b; }
+      .menu-flag[data-menu-flag="UNRESOLVED"] { color: var(--ink-dim); }
+      .menu-not-held { margin-top: 5px; color: var(--ink-dim);
+        font-size: 9px; letter-spacing: 0.06em; }
+      #menu .row { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+      #menu .keys { color: var(--ink-dim); font-size: 9px; letter-spacing: 0.14em; }
+      #menu .row .spacer { flex: 1; }
+      #menu button.close { pointer-events: auto; background: none;
+        border: 1px solid rgba(138, 143, 152, 0.3); color: var(--ink-dim);
+        font: inherit; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+        padding: 5px 9px; cursor: pointer; }
+      #menu button.close:hover { color: #c6cad2;
+        border-color: rgba(198, 202, 210, 0.5); }
     </style>
   </head>
   <body>
@@ -155,6 +198,7 @@
         <div><span class="label">data source</span><span class="value" data-hud="source">none</span></div>
       </div>
       <button id="export" data-hud="export" type="button">download this slice as csv</button>
+      <button id="menu-button" data-hud="menu" type="button">known bodies</button>
 
 
       <div id="caption" hidden></div>
@@ -168,6 +212,18 @@
         <span class="count" data-tour="count"></span>
         <button type="button" data-tour="next">next</button>
         <button type="button" data-tour="skip">skip</button>
+      </div>
+    </div>
+    <div id="menu" hidden>
+      <div class="title">known bodies</div>
+      <div class="subtitle" data-menu="subtitle"></div>
+      <div class="list" data-menu="list" role="listbox"
+           aria-label="known celestial bodies"></div>
+      <div data-menu="not-held"></div>
+      <div class="row">
+        <span class="keys">↑↓ move · enter pick · esc close</span>
+        <span class="spacer"></span>
+        <button type="button" data-menu="close">close</button>
       </div>
     </div>
       <div id="epoch-line">sky epoch —</div>
