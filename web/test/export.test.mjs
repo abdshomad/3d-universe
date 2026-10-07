@@ -6,8 +6,10 @@ import test from 'node:test';
 
 import {
   assertFlagged, buildSlice, COLUMNS, csvField, drawnIndices,
-  measuredRows, modelledRows, toCsv,
+  measuredRows, modelledRows, pickedRow, toCsv,
 } from '../src/core/export.js';
+import { METRES_PER_AU, METRES_PER_PC } from '../src/core/units.js';
+import { LIGHT_YEARS_PER_PC } from '../src/core/light-travel.js';
 import { PLANET_FLAG } from '../src/data/exoplanets.js';
 
 function tile(count = 8, tileId = 't') {
@@ -215,4 +217,58 @@ test('the header carries the columns only planet rows fill', () => {
   assert.ok(COLUMNS.includes('disc_year'));
   const measured = measuredRows({ tiles: [tile(2)], drawn: drawn(2) });
   assert.equal(measured[0].host, undefined, 'a star has no host and must not invent one');
+});
+
+/** A celestial pick, as the menu and the search both
+ * produce it: the same entry, the same flight. */
+function celestialPick() {
+  return {
+    id: 'sbdb:20000001',
+    kind: 'small_body',
+    name: '1 Ceres (A801 AA)',
+    flag: 'MEASURED',
+    ra_deg: 76.001904,
+    dec_deg: 19.721149,
+    distance_pc: 3.4582 * METRES_PER_AU / METRES_PER_PC,
+    visual_magnitude: 3.34,
+    provenance: 'nasa.jpl.sbdb live · U3DTILE2 · measured',
+  };
+}
+
+test('a picked celestial body exports with its flag and its light', () => {
+  const picked = celestialPick();
+  const row = pickedRow(picked);
+  assert.equal(row.id, 'sbdb:20000001');
+  assert.equal(row.flag, 'MEASURED');
+  assert.equal(row.magnitude, 3.34);
+  assert.equal(row.provenance, 'nasa.jpl.sbdb live · U3DTILE2 · measured');
+  // The row is the position the tile drew: the
+  // same ra, dec and distance the flight flew to.
+  const dec = (19.721149 * Math.PI) / 180;
+  const ra = (76.001904 * Math.PI) / 180;
+  const distance = picked.distance_pc;
+  assert.ok(Math.abs(row.x_pc - Math.cos(dec) * Math.cos(ra) * distance) < 1e-6);
+  assert.ok(Math.abs(row.z_pc - Math.sin(dec) * distance) < 1e-6);
+  assert.ok(
+    Math.abs(row.light_travel_yr - distance * LIGHT_YEARS_PER_PC) < 1e-3);
+  // The pick rides the slice as its last row,
+  // flagged like every other row.
+  const slice = buildSlice({ picked });
+  assert.equal(slice.rows.length, 1);
+  assert.equal(slice.rows.at(-1).id, 'sbdb:20000001');
+  assertFlagged(slice.rows, 'MEASURED');
+});
+
+test('a pick the drawn set already names exports nothing', () => {
+  // A star on screen is in the measured rows; a
+  // modelled cell is in the modelled ones. Only a
+  // celestial body is a pick the file would
+  // otherwise miss.
+  assert.equal(
+    pickedRow({ id: 'star', kind: 'star', ra_deg: 1, dec_deg: 1, distance_pc: 1 }),
+    null,
+  );
+  assert.equal(pickedRow(null), null);
+  const slice = buildSlice({ picked: { kind: 'star', id: 's' } });
+  assert.equal(slice.rows.length, 0);
 });

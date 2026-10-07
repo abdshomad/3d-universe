@@ -411,3 +411,20 @@ When the plan is empty, auto-trigger `e`: decompose the next 3 PRD enhancements 
   default route under SwiftShader — every one of the six additive point
   layers is necessary to it, the backdrop and ribbons are innocent, and
   it is not the far-scale limit the galaxy render scale already handles.
+
+- 2026-10-07 — `n` #35 (sub-plan 05, E22 final): every menu entry flies. The
+  entries are built at runtime from the loaded tiles and their sidecar rows —
+  the entry's ra/dec is read back from the tile's quantised position
+  (`positionAt(tile, index, [0, 0, 0])`), so a menu pick flies to exactly the
+  drawn body: no ingest re-run, no network, deterministic. The menu is two
+  levels — kinds, then a kind's bodies, brightest first, capped at 100 with the
+  cap stated on screen ("small bodies — 100 brightest of 500"); a kind with no
+  dataset stays *not held* with its reason. Menu pick ≡ search pick is
+  structural: the entries merge into the one `SearchIndex` (idempotent,
+  replaces by id), and both paths share `flyToEntry` — the smoke asserts a menu
+  pick and a typed name produce the identical route string. The export carries
+  the picked body as its last row, flagged like every other row. 404/404 node
+  tests (13 new: the entry round-trip off the quantised grid, the two-level
+  model's sort/cap/subtitle rules, the picked export row); the browser smoke is
+  green with zero page errors (kinds listed with counts and flags, arrows move,
+  drill lists 100 AU distances, Vesta flies, card cited, export flagged).

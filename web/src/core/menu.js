@@ -1,12 +1,13 @@
 /**
- * The menu controller: open, close, move, pick.
+ * The menu controller: open, close, move, pick, drill.
  *
  * Keyboard-first, the way search is: `b` opens the panel,
- * arrows move the selection, Enter picks, Escape closes.
+ * arrows move the selection, Enter lists a kind or flies
+ * a body, Escape backs out of a list and then closes.
  * While the panel is open it owns the keyboard — Tab
  * cycles inside it and never out — and focus returns to
  * wherever it was when it closes. The controller hands a
- * picked entry to its caller and flies nothing itself:
+ * picked body to its caller and flies nothing itself:
  * what a pick does belongs to whoever wired the menu.
  */
 
@@ -26,19 +27,21 @@ export class Menu {
     this.list = this.panel?.querySelector('[data-menu=list]');
     this.model = null;
     this.active = 0;
+    // The view is the level the menu is showing: the
+    // kinds, or one held kind's bodies.
+    this.view = { level: 'kinds', kind: null };
     this.opened = false;
     this.lastFocus = null;
 
     this.button?.addEventListener('click', () => this.toggle());
     this.panel?.querySelector('[data-menu=close]')
       ?.addEventListener('click', () => this.close());
-    // One delegated listener: a click on a row picks that row's kind.
+    // One delegated listener: a click on a row is that
+    // row's ask — a kind lists its bodies, a body flies.
     this.list?.addEventListener('click', (event) => {
       const row = event.target.closest('[data-menu-entry]');
       if (!row || !this.model) return;
-      const index = this.model.entries.findIndex(
-        (entry) => entry.kind === row.dataset.menuEntry,
-      );
+      const index = this.indexOf(row.dataset.menuEntry);
       if (index >= 0) {
         this.active = index;
         this.pick();
@@ -52,10 +55,22 @@ export class Menu {
     return this.model?.entries ?? [];
   }
 
+  /** The body list the view is showing, when it shows one. */
+  get currentList() {
+    if (this.view.level !== 'bodies') return null;
+    return this.model?.lists.get(this.view.kind) ?? null;
+  }
+
+  /** The rows the view is showing, whichever level that is. */
+  get rows() {
+    return this.currentList?.bodies ?? this.entries;
+  }
+
   /** A new model: the loaded datasets changed, so repaint. */
   setModel(model) {
     this.model = model;
     this.active = 0;
+    this.view = { level: 'kinds', kind: null };
     if (this.opened) this.paint();
   }
 
@@ -64,6 +79,8 @@ export class Menu {
     if (!this.panel || this.opened || this.entries.length === 0) return;
     this.opened = true;
     this.lastFocus = this.root.activeElement ?? null;
+    this.view = { level: 'kinds', kind: null };
+    this.active = 0;
     this.panel.hidden = false;
     this.panel.dataset.open = '';
     this.paint();
@@ -87,26 +104,61 @@ export class Menu {
   }
 
   move(delta) {
-    const count = this.entries.length;
+    const count = this.rows.length;
     if (count === 0) return;
     this.active = (this.active + delta + count) % count;
     this.paint();
     this.focusActive();
   }
 
-  /** Hand the selected entry to the caller. */
+  /**
+   * The selected row's ask. A kind is a door, not a
+   * destination: listing it is the pick. A body is a
+   * destination: the caller flies it.
+   */
   pick() {
-    const entry = this.entries[this.active];
-    if (entry) this.onPick?.(entry);
+    if (this.view.level === 'bodies') {
+      const entry = this.currentList?.bodies[this.active];
+      if (entry) this.onPick?.(entry);
+      return;
+    }
+    const kind = this.entries[this.active]?.kind;
+    if (kind && this.model?.lists.get(kind)) this.drill(kind);
+  }
+
+  /** Show one held kind's bodies. */
+  drill(kind) {
+    if (!this.model?.lists.get(kind)) return;
+    this.view = { level: 'bodies', kind };
+    this.active = 0;
+    this.paint();
+    this.focusActive();
+  }
+
+  /** Back to the kinds, from wherever the view is. */
+  up() {
+    if (this.view.level !== 'bodies') return;
+    this.view = { level: 'kinds', kind: null };
+    // The kind that was listed stays selected, so
+    // backing out lands where the viewer was.
+    const index = this.entries.findIndex(
+      (entry) => entry.kind === this.view.kind,
+    );
+    this.active = index >= 0 ? index : 0;
+    this.paint();
+    this.focusActive();
   }
 
   paint() {
-    renderMenu(this.panel, this.model, this.active);
+    renderMenu(this.panel, this.model, { ...this.view, active: this.active });
   }
 
   focusActive() {
-    const kind = this.entries[this.active]?.kind;
-    this.list?.querySelector(`[data-menu-entry="${kind}"]`)?.focus();
+    const key = this.view.level === 'bodies'
+      ? this.currentList?.bodies[this.active]?.id
+      : this.entries[this.active]?.kind;
+    if (key == null) return;
+    this.list?.querySelector(`[data-menu-entry="${key}"]`)?.focus();
   }
 
   /** The panel's own keys. Everything else is the caller's. */
@@ -115,7 +167,10 @@ export class Menu {
     switch (event.key) {
       case 'Escape':
         event.preventDefault();
-        this.close();
+        // Escape is one step back: out of a list, then
+        // out of the menu.
+        if (this.view.level === 'bodies') this.up();
+        else this.close();
         break;
       case 'ArrowDown':
         event.preventDefault();
@@ -144,5 +199,13 @@ export class Menu {
       (index + direction + focusable.length) % focusable.length
     ];
     next?.focus();
+  }
+
+  /** The row's index in the rows the view is showing. */
+  indexOf(key) {
+    return this.rows.findIndex((row) => {
+      if (this.view.level === 'bodies') return row.id === key;
+      return row.kind === key;
+    });
   }
 }

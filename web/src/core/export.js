@@ -11,6 +11,7 @@
 import { METRES_PER_PC } from './units.js';
 import { identityAt, positionAt } from './picker.js';
 import { LIGHT_YEARS_PER_PC } from './light-travel.js';
+import { CELESTIAL_KINDS } from './celestial-index.js';
 import { planetRows } from '../data/exoplanets.js';
 
 /**
@@ -130,19 +131,54 @@ export function modelledRows({ field, level, threshold = 0, limit = Infinity }) 
 }
 
 /**
- * Build the whole slice: what is drawn, measured rows first. The planets
- * ride along, but only the ones whose host the renderer is drawing.
+ * The picked body's row. A pick is a claim, and the
+ * export is the last chance for it to be an honest
+ * one: the row carries the tile's flag, never a
+ * default, and says where the body was drawn.
+ * @param {object|null} picked a celestial search entry
  */
-export function buildSlice({ tiles = [], drawn = [], starIndex = null, exoplanetReport = null, originMetres = [0, 0, 0], field = null, level = 1, threshold = 0, limit = Infinity }) {
+export function pickedRow(picked) {
+  // Only a celestial body is a pick the drawn
+  // set does not already name: a star on screen
+  // is in the measured rows, and a modelled cell
+  // is in the modelled ones.
+  if (!picked || !CELESTIAL_KINDS[picked.kind]) return null;
+  const dec = (picked.dec_deg ?? 0) * Math.PI / 180;
+  const ra = (picked.ra_deg ?? 0) * Math.PI / 180;
+  const distance = Number(picked.distance_pc) || 0;
+  const cosDec = Math.cos(dec);
+  return {
+    id: picked.id,
+    flag: picked.flag ?? null,
+    x_pc: round(cosDec * Math.cos(ra) * distance),
+    y_pc: round(cosDec * Math.sin(ra) * distance),
+    z_pc: round(Math.sin(dec) * distance),
+    distance_pc: round(distance, 4),
+    light_travel_yr: round(distance * LIGHT_YEARS_PER_PC, 3),
+    magnitude: picked.visual_magnitude ?? null,
+    colour_index: '',
+    provenance: picked.provenance ?? null,
+  };
+}
+
+/**
+ * Build the whole slice: what is drawn, measured rows first. The planets
+ * ride along, but only the ones whose host the renderer is drawing, and
+ * the picked body rides along with the flag its tile carries.
+ */
+export function buildSlice({ tiles = [], drawn = [], starIndex = null, exoplanetReport = null, originMetres = [0, 0, 0], field = null, level = 1, threshold = 0, limit = Infinity, picked = null }) {
   const measured = measuredRows({ tiles, drawn, originMetres, limit });
   const modelled = field ? modelledRows({ field, level, threshold, limit }) : [];
   // A planet is a fact about its host star: a host the renderer is not
   // drawing is a system the file would claim to show and does not.
   const hosts = drawnIndices({ tile: starIndex?.tile, drawn });
   const planets = exoplanetReport ? planetRows(exoplanetReport, hosts) : [];
+  // A picked body is on screen — the reticle is on it —
+  // so the file says so, with the flag its tile carries.
+  const body = pickedRow(picked);
   return {
     columns: COLUMNS,
-    rows: [...measured, ...modelled, ...planets],
+    rows: [...measured, ...modelled, ...planets, ...(body ? [body] : [])],
   };
 }
 

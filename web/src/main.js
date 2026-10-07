@@ -57,6 +57,7 @@ import { METRES_PER_PC, metresToPc } from './core/units.js';
 import { Menu } from './core/menu.js';
 import { menuModel } from './ui/menu.js';
 import { celestialDirection } from './core/celestial.js';
+import { celestialEntries, CELESTIAL_KINDS } from './core/celestial-index.js';
 import { hudModel, renderHud } from './ui/hud.js';
 import { FlightController, inputFromKeys } from './core/flight-controls.js';
 import { journeyFromLandmarks } from './core/journey.js';
@@ -183,11 +184,53 @@ function menuLoaded() {
       flag: tile.header.provenance.flag,
     }));
 }
+
+/**
+ * Every held kind's bodies, read back from the
+ * tiles that draw them and keyed by the sidecar
+ * rows a card reads. The entry's position is the
+ * position the atlas draws, so a flight to a
+ * menu entry lands on the body the viewer sees.
+ */
+function loadCelestialBodies() {
+  const tiles = [
+    ['small_body', smallBodyTile],
+    ['comet', cometsTile],
+    ['planet', planetsTile],
+    ['satellite', satellitesTile],
+    ['galaxy', galaxiesTile],
+    ['black_hole', blackHolesTile],
+  ];
+  const rows = [
+    ['small_body', smallBodyRows],
+    ['comet', cometsRows],
+    ['planet', planetsRows],
+    ['satellite', satellitesRows],
+    ['galaxy', galaxiesRows],
+    ['black_hole', blackHolesRows],
+  ];
+  const bodies = new Map();
+  for (let index = 0; index < tiles.length; index += 1) {
+    const [kind, tile] = tiles[index];
+    if (!tile) continue;
+    const rowMap = rows[index][1] ?? new Map();
+    bodies.set(
+      kind,
+      celestialEntries({ tile, rows: rowMap, kind }),
+    );
+  }
+  return bodies;
+}
 const cometsRows = new Map();
 const planetsRows = new Map();
 const satellitesRows = new Map();
 const galaxiesRows = new Map();
 const blackHolesRows = new Map();
+
+/** The celestial bodies, read back from the tiles
+  * that draw them. Built once, after every tile
+  * and sidecar is in hand. */
+let celestialBodies = new Map();
 let cometsLayers = [];
 let planetsLayers = [];
 let satellitesLayers = [];
@@ -262,18 +305,38 @@ function attachSearchBox() {
       result.textContent = `nothing found for "${box.value}"`;
       return;
     }
-    const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
-    const path = flightPathTo(match, { fromPc });
-    guide.record('searched');
-    cardSelection = { ...match, kind: match.kind ?? 'landmark' };
-    switchRoute(path, `flight to ${match.name ?? `HIP ${match.hip}`}`);
+    flyToEntry(match, 'searched');
     result.textContent = searchResultText(match);
-    atlas.stats.searchResult = match.id;
   });
+}
+
+/**
+ * Fly to an entry: pause the guided route, aim a
+ * one-leg path at it, and select it. A typed name
+ * and a menu pick are the same ask, so both run
+ * this — one flight path, one card, one export
+ * row, however the choice arrived.
+ */
+function flyToEntry(match, reason) {
+  const fromPc = Math.max(metresToPc(Math.hypot(...atlas.rig.positionMetres)), 1e-4);
+  const path = flightPathTo(match, { fromPc });
+  guide.record(reason);
+  cardSelection = { ...match, kind: match.kind ?? 'landmark' };
+  switchRoute(path, `flight to ${match.name ?? (match.hip != null ? `HIP ${match.hip}` : match.id)}`);
+  atlas.stats.searchResult = match.id;
+  return match;
 }
 
 /** The line under the search box: what matched, in its own units. */
 function searchResultText(match) {
+  const spec = CELESTIAL_KINDS[match.kind];
+  if (spec) {
+    const value = match[spec.distance];
+    const shown = value != null
+      ? `${Number(value.toPrecision(4))} ${spec.unit}`
+      : '—';
+    return `${match.name ?? match.id} · ${shown}`;
+  }
   if (match.kind === 'small_body') {
     const spkid = String(match.id).split(':')[1];
     return `${match.name ?? 'small body'} · ${match.distance_au?.toFixed(3)} AU · spkid ${spkid}`;
@@ -423,6 +486,14 @@ async function start() {
     for (const hole of blackHolesPayload.black_holes) blackHolesRows.set(String(hole.recno), hole);
   }
 
+  // The celestial bodies join the one search index:
+  // a menu pick and a typed name are the same ask, so
+  // both answer from the same entries — and the entries
+  // are read back from the tiles that draw them, so a
+  // flight lands on the body the atlas actually shows.
+  celestialBodies = loadCelestialBodies();
+  searchIndex?.merge([...celestialBodies.values()].flat());
+
   const biggest = tiles.reduce((a, b) => (b.count > a.count ? b : a));
   starIndex = new StarIndex(biggest.worldPositions);
   starIndex.tile = biggest;
@@ -449,7 +520,10 @@ async function start() {
   redraw();
   // The menu is a projection of the loaded state,
   // built once the boot has every tile in hand.
-  menu.setModel(menuModel({ loaded: menuLoaded() }));
+  menu.setModel(menuModel({
+    loaded: menuLoaded(),
+    bodies: celestialBodies,
+  }));
 
   let previous = performance.now();
   const loop = (now) => {
@@ -547,6 +621,7 @@ function drawnSelection() {
  */
 function downloadSlice() {
   const slice = buildSlice({
+    picked: cardSelection,
     tiles,
     drawn: drawnSelection(),
     starIndex,
@@ -1369,7 +1444,13 @@ const motion = motionPolicy({ reduced: prefersReducedMotion() });
 const menu = new Menu({
   root: document,
   motion,
-  onPick: () => menu.close(),
+  onPick: (entry) => {
+    // A menu pick is a search with the entry
+    // pre-chosen: the same flight, the same
+    // card, the same export row.
+    flyToEntry(entry, 'picked');
+    menu.close();
+  },
 });
 const sharedView = decodeView(globalThis.location?.hash ?? '');
 let lastSharedHash = '';

@@ -16,17 +16,44 @@ export class SearchIndex {
   /** @param {object[]} entries as written by ingest's search index */
   constructor(entries = []) {
     this.entries = entries;
+    this.#reindex();
+  }
+
+  /** The lookup maps, rebuilt from the entries. */
+  #reindex() {
     this.byHip = new Map();
     this.bySpkid = new Map();
-    for (const entry of entries) {
+    this.byId = new Map();
+    for (const entry of this.entries) {
       if (typeof entry.hip === 'number') this.byHip.set(entry.hip, entry);
       // A small body answers to its spkid the way a star answers to
-      // its HIP number: a catalogue number is a name here too.
-      if (entry.kind === 'small_body' && typeof entry.id === 'string') {
+      // its HIP number: a catalogue number is a name here too. A
+      // comet is an SBDB body too, and its spkids are disjoint from
+      // the asteroids', so the same map answers both.
+      if ((entry.kind === 'small_body' || entry.kind === 'comet')
+          && typeof entry.id === 'string') {
         const spkid = Number(entry.id.split(':')[1]);
         if (Number.isInteger(spkid)) this.bySpkid.set(spkid, entry);
       }
+      // A prefixed id ("sbdb:1000036", "horizons:199") is a name
+      // too: the one string that names exactly one body.
+      if (typeof entry.id === 'string') this.byId.set(entry.id, entry);
     }
+  }
+
+  /**
+   * Merge entries into the index, replacing any entry with
+   * the same id. Idempotent: merging the same entries twice
+   * keeps one of each, because a body is one body however
+   * it arrived.
+   * @param {object[]} entries
+   */
+  merge(entries) {
+    const fresh = new Map(this.entries.map((entry) => [entry.id, entry]));
+    for (const entry of entries) fresh.set(entry.id, entry);
+    this.entries = [...fresh.values()];
+    this.#reindex();
+    return this.entries.length;
   }
 
   get size() {
@@ -56,6 +83,11 @@ export class SearchIndex {
   query(text) {
     const trimmed = String(text ?? '').trim();
     if (!trimmed) return [];
+
+    // A prefixed id names exactly one body; nothing
+    // else can outrank it.
+    const byId = this.byId.get(trimmed);
+    if (byId) return [byId];
 
     const byNumber = this.byNumber(trimmed);
     if (byNumber) return [byNumber];
